@@ -88,7 +88,6 @@ validate_input() {
 parse_input $@
 validate_input
 extract_configs_from_backup
-
 if [ $ClusterMembership != "Slave" ]
 then
     # ************************************************************************************************#

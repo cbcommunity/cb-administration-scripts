@@ -279,9 +279,9 @@ update_host_file () {
         color_echo "-------- \"$new_master\" host entry is found in the hosts file"
         remote_exec $ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
         color_echo "-------- Updating it to the $new_ip -----------------------"
-        command="sed -i -r 's/^ *[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(.* +$new_master)/$new_ip\1/' /etc/hosts"
-        remote_exec $ssh_conn "$command"
-        remote_exec $ssh_conn "grep \"$host_match_regex\" /etc/hosts"
+        _command="sed -i -r 's/^ *[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(.* +$new_master)/$new_ip\1/' /etc/hosts"
+        remote_exec $ssh_conn "$_command"
+        remote_exec $ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
         return 0
     fi
 
@@ -342,13 +342,12 @@ EOF
     color_echo "--- Done"
 
     color_echo "-------- Updating cluster.conf ----------------------------"
-    remote_exec $_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/cb/cluster.conf"
     remote_exec $_conn "sed -i 's/$old_master/$new_master/g' /etc/cb/cluster.conf"
+    remote_exec $_conn "sed -i 's/$OLD_IP/$new_master/g' /etc/cb/cluster.conf"
     color_echo "--- Done"
 
     color_echo "-------- Updating iptables --------------------------------"
     remote_exec $_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
-    remote_exec $_conn "sed -i 's/$old_master/$new_master/g' /etc/sysconfig/iptables"
     color_echo "--- Done"
 
     color_echo "-------- Updating master records in the db ----------------"
