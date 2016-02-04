@@ -262,11 +262,11 @@ update_host_file () {
         return 0
     fi
 
-    if [ "$old_master" == "$new_master" ] && [ "$old_ip" == "$new_ip" ];
-    then
-        color_echo "-------- Host file entries are up to date -----------------"
-        return 0
-    fi
+    #if [ "$old_master" == "$new_master" ] && [ "$old_ip" == "$new_ip" ];
+    #then
+    #    color_echo "-------- Host file entries are up to date -----------------"
+    #    return 0
+    #fi
 
     # If we have new hostname in the hosts file we will just update it with the current ip
     # If we don't have new hostname in the hosts file and we have an old hostname we will add a new entry to the hosts file
