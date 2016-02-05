@@ -114,18 +114,6 @@ extract_backup (){
     echo
 }
 
-regenerate_server_token () {
-    _conn=$1
-
-    echo
-    color_echo "-------- Regenerating server token on the remote server -----------------------------"
-    remote_exec $_conn "rm -rf /etc/cb/server.token"
-    token_command=$(printf '%q' "from cb.alliance.token_manager import SetupServerToken; SetupServerToken().set_server_token('/etc/cb/server.token')")
-    remote_exec $_conn "python -c $token_command"
-    color_echo "--- Done"
-    echo
-}
-
 re_init_db () {
     _conn=$1
     echo
@@ -225,7 +213,7 @@ update_all_slaves_with_new_master () {
             color_echo "--- Done"
 
             color_echo "-------- Updating hosts file ------------------------------"
-            update_host_file $old_master $OLD_IP $new_master $NEW_IP $last_conn
+            update_host_file $old_master $OLD_IP $new_master $NEW_IP $last_conn $SAVE_HOSTS
             color_echo "--- Done"
 
             color_echo "-------- Removing rabbitmq data path ----------------------"
@@ -244,66 +232,6 @@ update_all_slaves_with_new_master () {
             slave=0
         fi
     done < $LOCAL_BACKUP_DIR/cluster.conf
-}
-
-update_host_file () {
-
-    old_master=$1
-    old_ip=$2
-
-    new_master=$3
-    new_ip=$4
-
-    ssh_conn=$5
-
-    if [ "$new_master"  == "$new_ip" ];
-    then
-        color_echo "-------- IP address was provided. Skipping. ---------------"
-        return 0
-    fi
-
-    #if [ "$old_master" == "$new_master" ] && [ "$old_ip" == "$new_ip" ];
-    #then
-    #    color_echo "-------- Host file entries are up to date -----------------"
-    #    return 0
-    #fi
-
-    # If we have new hostname in the hosts file we will just update it with the current ip
-    # If we don't have new hostname in the hosts file and we have an old hostname we will add a new entry to the hosts file
-    # If neither old nor new hostname is in the hosts file we will not change hosts file, unless SAVE_HOSTS=1
-
-    host_match_regex="^.*[[:space:]]*$new_master[[:space:]]*.*$"
-    match=$(remote_exec $ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'" )
-    if [  "$match" == "1" ];
-    then
-        color_echo "-------- \"$new_master\" host entry is found in the hosts file"
-        remote_exec $ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
-        color_echo "-------- Updating it to the $new_ip -----------------------"
-        _command="sed -i -r 's/^ *[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(.* +$new_master)/$new_ip\1/' /etc/hosts"
-        remote_exec $ssh_conn "$_command"
-        remote_exec $ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
-        return 0
-    fi
-
-    host_match_regex="^.*[[:space:]]*$old_master[[:space:]]*.*$"
-
-    match=$(remote_exec $ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'" )
-    if [ "$old_master" != "$old_ip" ] && [ "$match" == "1" ];
-    then
-        color_echo "-------- $new_master host entry is not found in the hosts file, but the old one is."
-        color_echo "-------- Adding \"$new_ip        $new_master\" to the hosts file"
-        remote_exec $ssh_conn "sed -i '1i $new_ip        $new_master' /etc/hosts"
-        return 0
-    fi
-
-    if [ "$SAVE_HOSTS" == "1" ];
-    then
-        color_echo "-------- $new_master host entry is not found in the hosts file, but SAVE_HOSTS=$SAVE_HOSTS."
-        color_echo "-------- Adding \"$new_ip        $new_master\" to the hosts file"
-        remote_exec $ssh_conn "sed -i '1i $new_ip        $new_master' /etc/hosts"
-    else
-        color_echo "-------- Old host name is not in the hosts file. Not changing hosts file."
-    fi
 }
 
 udpate_remote_server () {
@@ -334,7 +262,7 @@ EOF
     NEW_IP=$( get_ip_from_hostname $new_master )
 
     color_echo "-------- Updating hosts file ------------------------------"
-    update_host_file $old_master $OLD_IP $new_master $NEW_IP $_conn
+    update_host_file $old_master $OLD_IP $new_master $NEW_IP $_conn $SAVE_HOSTS
     color_echo "--- Done"
 
     color_echo "-------- Updating cb.conf ---------------------------------"

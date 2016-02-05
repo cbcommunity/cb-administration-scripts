@@ -45,7 +45,7 @@ close_ssh_tunnel() {
     path=$1
     user=$( get_tail_element $path '_' 3 )
     host=$( get_tail_element $path '_' 2 )
-    ssh -o ControlPath=$path -O exit $user@host
+    ssh -o ControlPath=$path -O exit $user@$host
 }
 
 remote_exec() {
@@ -53,7 +53,7 @@ remote_exec() {
     remote_command=$2
     user=$( get_tail_element $path '_' 3 )
     host=$( get_tail_element $path '_' 2 )
-    ssh -o ControlPath=$path $user@host "$remote_command"
+    ssh -o ControlPath=$path $user@$host "$remote_command" < /dev/null
 }
 
 remote_copy() {
@@ -137,6 +137,74 @@ extract_configs_from_backup ()
     tar xf $LOCAL_BACKUP_DIR/cbconfig.tar -P -C $LOCAL_BACKUP_DIR/ /etc/cb/cb.conf --strip-components 2
     tar xf $LOCAL_BACKUP_DIR/cbconfig.tar -P -C $LOCAL_BACKUP_DIR/ /etc/cb/cluster.conf --strip-components 2
     source $LOCAL_BACKUP_DIR/cb.conf
+}
+
+regenerate_server_token () {
+    _conn=$1
+
+    echo
+    color_echo "-------- Regenerating server token on the remote server -----------------------------"
+    remote_exec $_conn "rm -rf /etc/cb/server.token"
+    token_command=$(printf '%q' "from cb.alliance.token_manager import SetupServerToken; SetupServerToken().set_server_token('/etc/cb/server.token')")
+    remote_exec $_conn "python -c $token_command"
+    color_echo "--- Done"
+    echo
+}
+
+
+update_host_file () {
+
+    _old_host=$1
+    _old_ip=$2
+
+    _new_host=$3
+    _new_ip=$4
+
+    _ssh_conn=$5
+    _save_host_entry=$6
+
+    if [ "$_new_host"  == "$_new_ip" ];
+    then
+        color_echo "-------- IP address was provided. Skipping. ---------------"
+        return 0
+    fi
+
+    # If we have new hostname in the hosts file we will just update it with the current ip
+    # If we don't have new hostname in the hosts file and we have an old hostname we will add a new entry to the hosts file
+    # If neither old nor new hostname is in the hosts file we will not change hosts file, unless SAVE_HOSTS=1
+
+    host_match_regex="^.*[[:space:]]*$_new_host[[:space:]]*.*$"
+    _match=$(remote_exec $_ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'" )
+    if [  "$_match" == "1" ];
+    then
+        color_echo "-------- \"$_new_host\" host entry is found in the hosts file"
+        remote_exec $_ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
+        color_echo "-------- Updating it to the $_new_ip -----------------------"
+        _command="sed -i -r 's/^ *[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(.* +$_new_host)/$_new_ip\1/' /etc/hosts"
+        remote_exec $_ssh_conn "$_command"
+        remote_exec $_ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
+        return 0
+    fi
+
+    host_match_regex="^.*[[:space:]]*$_old_host[[:space:]]*.*$"
+
+    _match=$(remote_exec $_ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'" )
+    if [ "$_old_host" != "$_old_ip" ] && [ "$_match" == "1" ];
+    then
+        color_echo "-------- $_new_host host entry is not found in the hosts file, but the old one is."
+        color_echo "-------- Adding \"$_new_ip        $_new_host\" to the hosts file"
+        remote_exec $_ssh_conn "sed -i '1i $_new_ip        $_new_host' /etc/hosts"
+        return 0
+    fi
+
+    if [ "$_save_host_entry" == "1" ];
+    then
+        color_echo "-------- Neither $_new_host nor $_old_host was not found in the /etc/hosts file, but SAVE_HOSTS=$_save_host_entry was provided, so we are adding a new entry."
+        color_echo "-------- Adding \"$_new_ip        $_new_host\" to the hosts file"
+        remote_exec $_ssh_conn "sed -i '1i $_new_ip        $_new_host' /etc/hosts"
+    else
+        color_echo "-------- Old host name is not in the hosts file. Not changing hosts file."
+    fi
 }
 
 cleanup_tmp_files() {

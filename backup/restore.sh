@@ -228,190 +228,126 @@ then
     color_echo "-------- Master node is succesfully restored ----------------------------------------"
     echo
 else
-    slave_to_restore=$( get_tail_element $LOCAL_BACKUP_DIR '/' 2 )
-
+    # ************************************************************************************************#
+    # **************************** Open the connection to the master host*****************************#
+    # ************************************************************************************************#
+    color_echo "-------- Opening connection to the master node ---------------------------------------"
     ret_val=$( read_cluster_config "Master" )
-
     MASTER_HOST=$( get_tail_element "$ret_val" '|' 3 )
     MASTER_USER=$( get_tail_element "$ret_val" '|' 2 )
-
     MASTER_BACKUPDIR="$MASTER_HOST/$(ls -t $MASTER_HOST | head -1)"
-    tar xvf $MASTER_BACKUPDIR/cbconfig.tar -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
-    chmod 0400 $slave_ssh_key
-
     open_ssh_tunnel $MASTER_USER $MASTER_HOST $MASTER_SSH_KEY
     master_conn=$last_conn
+    color_echo "--- Done"
+
+    # ************************************************************************************************#
+    # **************************** Stopping the cluster **********************************************#
+    # ************************************************************************************************#
+    color_echo "-------- Stopping the cluster --------------------------------------------------------"
+    remote_exec $master_conn "/usr/share/cb/cbcluster stop"
+    color_echo "--- Done"
+
+    # ************************************************************************************************#
+    # **************************** Opening the connection to the remote host using slave_ssh_key *****#
+    # ************************************************************************************************#
+    color_echo "-------- Connecting to the remote server ---------------------------------------------"
+    slave_ssh_key="$LOCAL_BACKUP_DIR/cb_ssh"
+    tar xf $MASTER_BACKUPDIR/cbconfig.tar -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
+    chmod 0400 $slave_ssh_key
 
     if [ ! -f $slave_ssh_key ]
     then
         remote_copy $master_conn "/etc/cb/cb_ssh" "$LOCAL_BACKUP_DIR/" 1
+        chmod 0400 $slave_ssh_key
+    fi
+
+    if [ $(ssh -q -o "BatchMode yes" $REMOTE_USER@$REMOTE_HOST -i $slave_ssh_key "echo 1 && exit " || echo "0") == "0" ];
+    then
+        remote_copy $master_conn "/etc/cb/cb_ssh.pub" "$LOCAL_BACKUP_DIR/" 1
+        ssh-copy-id -i "$slave_ssh_key.pub" $REMOTE_USER@$REMOTE_HOST
     fi
 
     open_ssh_tunnel $REMOTE_USER $REMOTE_HOST $slave_ssh_key
     remote_conn=$last_conn
+    color_echo "--- Done"
 
+    # ************************************************************************************************#
+    # **************************** Copying backup files to the remote machine ************************#
+    # ************************************************************************************************#
+    color_echo "-------- Copying the backup to the remote machine -------------------------------------"
     remote_exec $remote_conn "mkdir -p $REMOTE_RESTORE_DIR"
     remote_copy $remote_conn "$LOCAL_BACKUP_DIR/*" "$REMOTE_RESTORE_DIR" 0 -r
+    color_echo "--- Done"
 
-    ret_val=$( read_cluster_config "Slave*" "Host" $slave_to_restore )
-    slave_to_restore=$( get_tail_element "$ret_val" '|' 3 )
-
-    if [ -z "$slave_to_restore" ];
-    then
-        echo "Please enter the minion that you are trying to restore"
-        read slave_to_restore
-    fi
-
-    ret_val=$( read_cluster_config "Slave*" "Host" $slave_to_restore )
-    slave_to_restore=$( get_tail_element "$ret_val" '|' 3 )
-    shards=$(get_tail_element "$ret_val" '|' 1)
-    shards=$(sed -r 's/shards(=|\s)//g' <<< "$shards")
+    # ************************************************************************************************#
+    # **************************** Getting slave node from the backup ********************************#
+    # ************************************************************************************************#
+    color_echo "-------- Getting old slave node information from the backup ---------------------------"
+    slave_host=$( parse_slave_host_from_backup "$LOCAL_BACKUP_DIR" )
+    ret_val=$( read_cluster_config "Slave*" "Host" $slave_host )
+    slave_shards=$(get_tail_element "$ret_val" '|' 1)
+    slave_shards=$(sed -r 's/shards(=|\s)//g' <<< "$slave_shards")
     slave_name=$( get_tail_element "$ret_val" '|' 4 )
-    node_id=$( get_tail_element "$ret_val" '|' 5 )
+    slave_node_id=$( get_tail_element "$ret_val" '|' 5 )
+    color_echo "--- Done"
 
-    #Stop CB-Enterprise
-    #Clustered environment (on master run):
-    remote_exec $master_conn "/usr/share/cb/cbcluster stop"
+    # ************************************************************************************************#
+    # **************************** Installing new cb-enterprise if needed ****************************#
+    # ************************************************************************************************#
+    color_echo "-------- Installing the server -------------------------------------------------------"
+    install_cb_enterprise $remote_conn "$REMOTE_RESTORE_DIR"
+    color_echo "--- Done"
 
-    if [ $( remote_exec $remote_conn "test -e '/etc/cb/cb.conf' && echo 1 || echo 0" ) == 0 ]
-    then
+    # ************************************************************************************************#
+    # **************************** Generating config file for slave node to use for init *************#
+    # ************************************************************************************************#
+    color_echo "-------- Generating init config file -------------------------------------------------"
+    generate_init_conf $master_conn $remote_conn "$LOCAL_BACKUP_DIR" "$REMOTE_RESTORE_DIR"
+    color_echo "--- Done"
 
-        remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbyum.tar"
-        remote_exec $remote_conn "yum -y install cb-enterprise"
-    fi
+    # ************************************************************************************************#
+    # **************************** Initializing slave node *******************************************#
+    # ************************************************************************************************#
+    color_echo "-------- Initializing remote slave node ----------------------------------------------"
+    init_slave_node $master_conn $remote_conn "$LOCAL_BACKUP_DIR" "$REMOTE_RESTORE_DIR" "$slave_host" "$REMOTE_HOST" $slave_node_id
+    color_echo "--- Done"
 
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbcerts.tar"
-    remote_exec $master_conn "service cb-pgsql start"
+    # ************************************************************************************************#
+    # **************************** Restoring backup files ********************************************#
+    # ************************************************************************************************#
+    color_echo "-------- Restoring backup files on the remote slave ----------------------------------"
+    restore_slave_backup $remote_conn
+    color_echo "--- Done"
 
-    rm -rf $LOCAL_BACKUP_DIR/cbinit.py
-    cat <<EOF >> $LOCAL_BACKUP_DIR/cbinit.py
-from cb.core.cluster_config import ClusterConfig, Node
-from cb.utils.db import db_session_context
-from cb.db.core_models import SensorGroup
-from cb.utils.config import Config
-import re
+    # ************************************************************************************************#
+    # **************************** Regenerating server token *****************************************#
+    # ************************************************************************************************#
+    color_echo "-------- Generating new server token -------------------------------------------------"
+    regenerate_server_token $remote_conn
+    color_echo "--- Done"
 
-config = Config()
-config.load('/etc/cb/cb.conf')
-cluster_config=ClusterConfig.load(config)
+    # ************************************************************************************************#
+    # **************************** Updating master with new slave node information *******************#
+    # ************************************************************************************************#
+    color_echo "-------- Updating master node with new slave information -----------------------------"
+    update_master_with_new_slave "$master_conn" "$LOCAL_BACKUP_DIR" "$slave_host" $slave_node_id "$REMOTE_HOST"
+    color_echo "--- Done"
 
-pgsql_password=''
-default_sensor_server_url=''
+    # ************************************************************************************************#
+    # **************************** Updating slaves with new slave node information *******************#
+    # ************************************************************************************************#
+    color_echo "-------- Updating all slaves with new slave information ------------------------------"
+    update_all_slaves_with_new_slave $master_conn $LOCAL_BACKUP_DIR $slave_ssh_key
+    color_echo "--- Done"
 
-match = re.search('//cb:(?P<pass>[^@]*)', config.DatabaseURL)
-if match:
-   pgsql_password=match.groups()[0]
-
-with db_session_context(config) as db:
-   default_sensor_server_url=db.query(SensorGroup).get(1).sensorbackend_server
-
-init_config = """
-[Config]
-master_host=%s
-root_storage_path=%s
-pgsql_password=%s
-service_autostart=0
-force_reinit=1
-cluster_membership=Slave
-manage_iptables=%s
-default_sensor_server_url=%s
-rabbitmq_password=%s""" % (
-    cluster_config.get_node(0)._configured_address,
-    config.DatastoreRootDir,
-    pgsql_password,
-    1 if config.ManageIptables else 0,
-    default_sensor_server_url,
-    config.RabbitMQPassword
-)
-
-with open("$REMOTE_RESTORE_DIR/cbinit.conf",'w') as tmpfile:
-    cbinit_conf = init_config
-    tmpfile.write(cbinit_conf)
-    tmpfile.flush()
-
-EOF
-
-    remote_exec $master_conn "mkdir -p $REMOTE_RESTORE_DIR"
-
-    remote_copy $master_conn "$LOCAL_BACKUP_DIR/cbinit.py" "$REMOTE_RESTORE_DIR" 0
-    remote_exec $master_conn "python $REMOTE_RESTORE_DIR/cbinit.py"
-
-    rm -rf $LOCAL_BACKUP_DIR/cbupdate.py
-    cat <<EOF >> $LOCAL_BACKUP_DIR/cbupdate.py
-from cb.utils.db import db_session_context
-from cb.db.core_models import SensorGroup, ClusterNodeSensorAddress
-from cb.utils.config import Config
-import re
-
-config = Config()
-config.load('/etc/cb/cb.conf')
-
-with db_session_context(config) as db:
-    node = db.query(ClusterNodeSensorAddress).get($node_id)
-    node.address="$REMOTE_HOST"
-    db.commit()
-EOF
-
-    remote_copy $master_conn "$LOCAL_BACKUP_DIR/cbupdate.py" "$REMOTE_RESTORE_DIR" 0
-    remote_exec $master_conn "python $REMOTE_RESTORE_DIR/cbupdate.py"
-
-
-    remote_exec $master_conn "service cb-pgsql stop"
-
-    remote_copy $master_conn "$REMOTE_RESTORE_DIR/cbinit.conf" "$LOCAL_BACKUP_DIR" 1
-    remote_copy $remote_conn "$LOCAL_BACKUP_DIR/cbinit.conf" "$REMOTE_RESTORE_DIR" 0
-
-    remote_exec $master_conn "sed -i 's/$slave_to_restore/$REMOTE_HOST/g' /etc/cb/cluster.conf"
-
-    remote_copy $master_conn "/etc/cb/cluster.conf" "$LOCAL_BACKUP_DIR" 1
-    remote_copy $master_conn "$LOCAL_BACKUP_DIR/cluster.conf" "/etc/cb/" 0
-
-    remote_exec $remote_conn "/usr/share/cb/cbinit --node-id $node_id $REMOTE_RESTORE_DIR/cbinit.conf"
-
-    # Delete any stored ssh keys
-    remote_exec $remote_conn "rm -rf /root/.ssh/known_hosts"
-
-    # Restore Configuration Files
-    # Restore Carbon Black Configuration files
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbconfig.tar"
-
-    #Copy updated cluster config to all slaves
-    copy_config_to_all_slaves $slave_ssh_key
-
-    # Clear server.token
-    remote_exec $remote_conn "rm -rf /etc/cb/server.token"
-
-    # Grab new server.token
-    token_command=$(printf '%q' "from cb.alliance.token_manager import SetupServerToken; SetupServerToken().set_server_token('/etc/cb/server.token')")
-    remote_exec $remote_conn "python -c $token_command"
-
-
-    # Restore SSH Keys
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbssh.tar"
-    # Hosts file
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbhosts.tar"
-    # Yum files
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbyum.tar"
-    # IP Tables file
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbiptables.tar"
-    # Rsyslog Configuration
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrsyslog.tar"
-    # Rsyslog.d Configuration
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrsyslogd.tar"
-    # logrotate Configuration
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cblogrotate.tar"
-    # Remove Rabbitmq cookie
-    remote_exec $remote_conn "rm -rf $DatastoreRootDir/../.erlang.cookie"
-    # Remove Rabbitmq node Configuration
-    remote_exec $remote_conn "rm -rf $RabbitMQDataPath"
-    # Optional: SSH Authorization Keys - Needed if you have used trusted keys between systems in a clustered environment
-    remote_exec $remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrootauthkeys.tar"
-    # Remove RabbitMQDataPath
-    remote_exec $master_conn "rm -rf $RabbitMQDataPath"
-    # Start CB-Enterprise (on the Master) Once all minion nodes are restored
-    # Clustered environment (on master run):
+    # ************************************************************************************************#
+    # **************************** Starting the cluster again ****************************************#
+    # ************************************************************************************************#
+    color_echo "-------- Starting the cluster --------------------------------------------------------"
     remote_exec $master_conn "/usr/share/cb/cbcluster start"
+    color_echo "--- Done"
 
+    cleanup_tmp_files
     close_ssh_tunnel $remote_conn
     close_ssh_tunnel $master_conn
 fi
