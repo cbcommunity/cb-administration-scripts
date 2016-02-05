@@ -270,7 +270,7 @@ EOF
     color_echo "--- Done"
 
     color_echo "-------- Updating cluster.conf ----------------------------"
-    remote_exec $_conn "sed -i 's/$old_master/$new_master/g' /etc/cb/cluster.conf"
+    remote_exec $_conn "sed -i 's/$old_master\$/$new_master/g' /etc/cb/cluster.conf"
     remote_exec $_conn "sed -i 's/$OLD_IP/$new_master/g' /etc/cb/cluster.conf"
     color_echo "--- Done"
 

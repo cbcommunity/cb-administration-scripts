@@ -228,41 +228,57 @@ then
     color_echo "-------- Master node is succesfully restored ----------------------------------------"
     echo
 else
+    color_echo "--------------------------------------------------------------------------------------"
+    color_echo "Slave configuration is found in the backup path"
+    color_echo "--------------------------------------------------------------------------------------"
+    echo
+
     # ************************************************************************************************#
-    # **************************** Open the connection to the master host*****************************#
+    # **************************** Getting slave node from the backup ********************************#
     # ************************************************************************************************#
-    color_echo "-------- Opening connection to the master node ---------------------------------------"
+    color_echo "-------- Getting slave information from the backup -----------------------------------"
+    slave_host=$( parse_slave_host_from_backup "$LOCAL_BACKUP_DIR" )
+    ret_val=$( read_cluster_config "Slave*" "Host" $slave_host )
+    slave_shards=$(get_tail_element "$ret_val" '|' 1)
+    slave_shards=$(sed -r 's/shards(=|\s)//g' <<< "$slave_shards")
+    slave_name=$( get_tail_element "$ret_val" '|' 4 )
+    slave_node_id=$( get_tail_element "$ret_val" '|' 5 )
+    # ************************************************************************************************#
+    # **************************** Getting master node information from the backup *******************#
+    # ************************************************************************************************#
+    color_echo "-------- Getting master information --------------------------------------------------"
     ret_val=$( read_cluster_config "Master" )
     MASTER_HOST=$( get_tail_element "$ret_val" '|' 3 )
     MASTER_USER=$( get_tail_element "$ret_val" '|' 2 )
     MASTER_BACKUPDIR="$MASTER_HOST/$(ls -t $MASTER_HOST | head -1)"
-    open_ssh_tunnel $MASTER_USER $MASTER_HOST $MASTER_SSH_KEY
-    master_conn=$last_conn
     color_echo "--- Done"
 
+    echo
     # ************************************************************************************************#
-    # **************************** Stopping the cluster **********************************************#
+    # **************************** Connecting to the master node *************************************#
     # ************************************************************************************************#
-    color_echo "-------- Stopping the cluster --------------------------------------------------------"
-    remote_exec $master_conn "/usr/share/cb/cbcluster stop"
-    color_echo "--- Done"
+    color_echo "-------- Connecting to the master [\e[0m$MASTER_HOST\e[1;32m] ---------------------------------------"
+    open_ssh_tunnel $MASTER_USER $MASTER_HOST $MASTER_SSH_KEY
+    master_conn=$last_conn
 
     # ************************************************************************************************#
     # **************************** Opening the connection to the remote host using slave_ssh_key *****#
     # ************************************************************************************************#
-    color_echo "-------- Connecting to the remote server ---------------------------------------------"
+    color_echo "-------- Connecting to the new node [\e[0m$REMOTE_HOST\e[1;32m] -------------------------------------"
     slave_ssh_key="$LOCAL_BACKUP_DIR/cb_ssh"
-    tar xf $MASTER_BACKUPDIR/cbconfig.tar -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
+    tar xf $MASTER_BACKUPDIR/cbconfig.tar -P -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
     chmod 0400 $slave_ssh_key
 
     if [ ! -f $slave_ssh_key ]
     then
+        color_echo "-------- SSH Key is not present in the backup. Getting it from the master ---------"
         remote_copy $master_conn "/etc/cb/cb_ssh" "$LOCAL_BACKUP_DIR/" 1
         chmod 0400 $slave_ssh_key
     fi
 
     if [ $(ssh -q -o "BatchMode yes" $REMOTE_USER@$REMOTE_HOST -i $slave_ssh_key "echo 1 && exit " || echo "0") == "0" ];
     then
+        color_echo "-------- SSH Key is not yet authorized on the remote machine. Copying the key. -------"
         remote_copy $master_conn "/etc/cb/cb_ssh.pub" "$LOCAL_BACKUP_DIR/" 1
         ssh-copy-id -i "$slave_ssh_key.pub" $REMOTE_USER@$REMOTE_HOST
     fi
@@ -271,6 +287,15 @@ else
     remote_conn=$last_conn
     color_echo "--- Done"
 
+    echo
+    # ************************************************************************************************#
+    # **************************** Stopping the cluster **********************************************#
+    # ************************************************************************************************#
+    color_echo "-------- Stopping the cluster --------------------------------------------------------"
+    remote_exec $master_conn "/usr/share/cb/cbcluster stop"
+    color_echo "--- Done"
+
+    echo
     # ************************************************************************************************#
     # **************************** Copying backup files to the remote machine ************************#
     # ************************************************************************************************#
@@ -279,39 +304,29 @@ else
     remote_copy $remote_conn "$LOCAL_BACKUP_DIR/*" "$REMOTE_RESTORE_DIR" 0 -r
     color_echo "--- Done"
 
-    # ************************************************************************************************#
-    # **************************** Getting slave node from the backup ********************************#
-    # ************************************************************************************************#
-    color_echo "-------- Getting old slave node information from the backup ---------------------------"
-    slave_host=$( parse_slave_host_from_backup "$LOCAL_BACKUP_DIR" )
-    ret_val=$( read_cluster_config "Slave*" "Host" $slave_host )
-    slave_shards=$(get_tail_element "$ret_val" '|' 1)
-    slave_shards=$(sed -r 's/shards(=|\s)//g' <<< "$slave_shards")
-    slave_name=$( get_tail_element "$ret_val" '|' 4 )
-    slave_node_id=$( get_tail_element "$ret_val" '|' 5 )
-    color_echo "--- Done"
-
+    echo
     # ************************************************************************************************#
     # **************************** Installing new cb-enterprise if needed ****************************#
     # ************************************************************************************************#
-    color_echo "-------- Installing the server -------------------------------------------------------"
     install_cb_enterprise $remote_conn "$REMOTE_RESTORE_DIR"
-    color_echo "--- Done"
 
-    # ************************************************************************************************#
-    # **************************** Generating config file for slave node to use for init *************#
-    # ************************************************************************************************#
-    color_echo "-------- Generating init config file -------------------------------------------------"
-    generate_init_conf $master_conn $remote_conn "$LOCAL_BACKUP_DIR" "$REMOTE_RESTORE_DIR"
-    color_echo "--- Done"
+    color_echo "--------------------------------------------------------------------------------------"
+    color_echo "CB Server is installed on the remote machine "
+    color_echo "--------------------------------------------------------------------------------------"
 
+    echo
     # ************************************************************************************************#
     # **************************** Initializing slave node *******************************************#
     # ************************************************************************************************#
-    color_echo "-------- Initializing remote slave node ----------------------------------------------"
+    color_echo "-------- Initializing CB Server in slave node ----------------------------------------"
+    # ************************************************************************************************#
+    # **************************** Generating config file for slave node to use for init *************#
+    # ************************************************************************************************#
+    generate_init_conf $master_conn $remote_conn "$LOCAL_BACKUP_DIR" "$REMOTE_RESTORE_DIR"
     init_slave_node $master_conn $remote_conn "$LOCAL_BACKUP_DIR" "$REMOTE_RESTORE_DIR" "$slave_host" "$REMOTE_HOST" $slave_node_id
     color_echo "--- Done"
 
+    echo
     # ************************************************************************************************#
     # **************************** Restoring backup files ********************************************#
     # ************************************************************************************************#
@@ -322,24 +337,29 @@ else
     # ************************************************************************************************#
     # **************************** Regenerating server token *****************************************#
     # ************************************************************************************************#
-    color_echo "-------- Generating new server token -------------------------------------------------"
     regenerate_server_token $remote_conn
-    color_echo "--- Done"
 
+    echo
     # ************************************************************************************************#
     # **************************** Updating master with new slave node information *******************#
     # ************************************************************************************************#
-    color_echo "-------- Updating master node with new slave information -----------------------------"
+    color_echo "--------------------------------------------------------------------------------------"
+    color_echo "Updating MASTER [\e[0m$MASTER_HOST\e[1;32m] with new slave information "
+    color_echo "--------------------------------------------------------------------------------------"
     update_master_with_new_slave "$master_conn" "$LOCAL_BACKUP_DIR" "$slave_host" $slave_node_id "$REMOTE_HOST"
     color_echo "--- Done"
 
+    echo
+    echo
     # ************************************************************************************************#
     # **************************** Updating slaves with new slave node information *******************#
     # ************************************************************************************************#
-    color_echo "-------- Updating all slaves with new slave information ------------------------------"
-    update_all_slaves_with_new_slave $master_conn $LOCAL_BACKUP_DIR $slave_ssh_key
-    color_echo "--- Done"
+    color_echo "--------------------------------------------------------------------------------------"
+    color_echo "Updating \e[0mALL SLAVES\e[1;32m with new slave information "
+    color_echo "--------------------------------------------------------------------------------------"
+    update_all_slaves_with_new_slave $master_conn $LOCAL_BACKUP_DIR $slave_ssh_key $slave_host $REMOTE_HOST $SAVE_HOSTS
 
+    echo
     # ************************************************************************************************#
     # **************************** Starting the cluster again ****************************************#
     # ************************************************************************************************#

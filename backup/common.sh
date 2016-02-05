@@ -165,7 +165,7 @@ update_host_file () {
 
     if [ "$_new_host"  == "$_new_ip" ];
     then
-        color_echo "-------- IP address was provided. Skipping. ---------------"
+        color_echo "-------- IP address was provided. Skipping."
         return 0
     fi
 
@@ -179,7 +179,7 @@ update_host_file () {
     then
         color_echo "-------- \"$_new_host\" host entry is found in the hosts file"
         remote_exec $_ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
-        color_echo "-------- Updating it to the $_new_ip -----------------------"
+        color_echo "-------- Updating it to the $_new_ip"
         _command="sed -i -r 's/^ *[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(.* +$_new_host)/$_new_ip\1/' /etc/hosts"
         remote_exec $_ssh_conn "$_command"
         remote_exec $_ssh_conn "grep -o \"$host_match_regex\" /etc/hosts"
