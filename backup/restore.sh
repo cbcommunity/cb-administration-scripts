@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#! /bin/bash
 
 . ./common.sh
 . ./restore_master.sh
@@ -87,6 +87,10 @@ validate_input() {
 
 parse_input $@
 validate_input
+
+exec > >(tee >(sed -u -r 's/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g' > $LOCAL_BACKUP_DIR/restore.log))
+exec 2>&1
+
 extract_configs_from_backup
 if [ $ClusterMembership != "Slave" ]
 then
@@ -243,6 +247,7 @@ else
     slave_shards=$(sed -r 's/shards(=|\s)//g' <<< "$slave_shards")
     slave_name=$( get_tail_element "$ret_val" '|' 4 )
     slave_node_id=$( get_tail_element "$ret_val" '|' 5 )
+
     # ************************************************************************************************#
     # **************************** Getting master node information from the backup *******************#
     # ************************************************************************************************#
@@ -250,7 +255,7 @@ else
     ret_val=$( read_cluster_config "Master" )
     MASTER_HOST=$( get_tail_element "$ret_val" '|' 3 )
     MASTER_USER=$( get_tail_element "$ret_val" '|' 2 )
-    MASTER_BACKUPDIR="$MASTER_HOST/$(ls -t $MASTER_HOST | head -1)"
+    MASTER_BACKUPDIR="$(dirname $LOCAL_BACKUP_DIR)/$MASTER_HOST"
     color_echo "--- Done"
 
     echo
@@ -266,13 +271,16 @@ else
     # ************************************************************************************************#
     color_echo "-------- Connecting to the new node [\e[0m$REMOTE_HOST\e[1;32m] -------------------------------------"
     slave_ssh_key="$LOCAL_BACKUP_DIR/cb_ssh"
-    tar xf $MASTER_BACKUPDIR/cbconfig.tar -P -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
-    chmod 0400 $slave_ssh_key
+    if [  -f $MASTER_BACKUPDIR/cbconfig.tar ];
+    then
+        tar xf $MASTER_BACKUPDIR/cbconfig.tar -P -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
+    fi
 
     if [ ! -f $slave_ssh_key ]
     then
         color_echo "-------- SSH Key is not present in the backup. Getting it from the master ---------"
         remote_copy $master_conn "/etc/cb/cb_ssh" "$LOCAL_BACKUP_DIR/" 1
+    else
         chmod 0400 $slave_ssh_key
     fi
 

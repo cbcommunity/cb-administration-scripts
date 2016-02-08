@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#! /bin/bash
 
 install_master() {
     _conn=$1

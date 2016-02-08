@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#! /bin/bash
 
 update_all_slaves_with_new_slave () {
     _master_conn=$1
@@ -80,7 +80,7 @@ update_all_slaves_with_new_slave () {
 parse_slave_host_from_backup () {
     _local_backup_dir=$1
     
-    _slave_host=$( get_tail_element "$_local_backup_dir" '/' 2 )
+    _slave_host=$( get_tail_element "$_local_backup_dir" '/' 1 )
     _ret_val=$( read_cluster_config "Slave*" "Host" $_slave_host )
     _slave_host=$( get_tail_element "$_ret_val" '|' 3 )
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#! /bin/bash
 
 DATE=$(date +%Y-%m-%d-%H-%M-%S)
 REMOTE_RESTORE_DIR=/tmp/restore/$DATE
@@ -213,6 +213,8 @@ cleanup_tmp_files() {
     rm -rf "$LOCAL_BACKUP_DIR/cb_ssh"
     rm -rf "$LOCAL_BACKUP_DIR/cbupdate.py"
     rm -rf "$LOCAL_BACKUP_DIR/cbinit.py"
-    rm -rf "$LOCAL_BACKUP_DIR/psqlcbvalues"
+    rm -rf "$LOCAL_BACKUP_DIR/cb_ssh.pub"
+    rm -rf "$LOCAL_BACKUP_DIR/cbinit.conf"
+    rm -rf "$LOCAL_BACKUP_DIR/.erlang.cookie"
 }
 
