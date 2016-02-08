@@ -8,8 +8,6 @@ update_all_slaves_with_new_slave () {
     _new_host=$5
     _save_hosts=$6
 
-
-    color_echo "-------- Copying cluster config and rabbitmq cookie from the master"
     # ********************************************************************************************#
     # **************************** Copying cluster.conf from the master *************************#
     # ********************************************************************************************#
@@ -27,6 +25,10 @@ update_all_slaves_with_new_slave () {
     do
         if [[ "$name" =~ ^\[Slave* ]]; then
             _slave=1
+            if [ ! -z "$_slave_name" ]
+            then
+                echo
+            fi
             _slave_name=$name
         fi
         if [ $_slave == 1 ] && [ "$name" == "Host" ]; then
@@ -36,38 +38,42 @@ update_all_slaves_with_new_slave () {
             _slave_user=$value
         fi
         if [ $_slave == 1 ] && [ ! -z "$_slave_host" ] && [ ! -z "$_slave_user"  ]; then
-            echo
             color_echo "--------------------------------------------------------------------------------------"
             color_echo "Updating $_slave_name [\e[0m$_slave_host\e[1;32m]"
             color_echo "--------------------------------------------------------------------------------------"
 
             color_echo "-------- Connecting using the key"
             open_ssh_tunnel $_slave_user $_slave_host $_slave_key
+            if [ $? == 0 ];
+            then
 
-            OLD_IP=$( get_ip_from_hostname $_old_host )
-            NEW_IP=$( get_ip_from_hostname $_new_host )
+                OLD_IP=$( resolve_hostname $_old_host )
+                NEW_IP=$( resolve_hostname $_new_host )
 
-            color_echo "-------- Updating hosts file"
-            update_host_file $_old_host $OLD_IP $_new_host $NEW_IP $last_conn $_save_hosts
+                color_echo "-------- Updating hosts file"
+                update_host_file $_old_host $OLD_IP $_new_host $NEW_IP $last_conn $_save_hosts
 
-            color_echo "-------- Updating iptables"
-            remote_exec $last_conn "service iptables stop > /dev/null"
-            remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
-            remote_exec $last_conn "service iptables start > /dev/null"
+                color_echo "-------- Updating iptables"
+                remote_exec $last_conn "service iptables stop > /dev/null"
+                remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
+                remote_exec $last_conn "service iptables start > /dev/null"
 
-            color_echo "-------- Stopping  cb-enterprise"
-            remote_exec $last_conn "service cb-enterprise stop > /dev/null"
-            remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9 > /dev/null"
+                color_echo "-------- Stopping  cb-enterprise"
+                remote_exec $last_conn "service cb-enterprise stop > /dev/null"
+                remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9 > /dev/null"
 
-            color_echo "-------- Copying cluster.conf and rabbitmq cookie"
-            remote_copy $last_conn "$_local_backup_dir/cluster.conf" "/etc/cb/" 0
-            remote_copy $last_conn "$_local_backup_dir/.erlang.cookie" "/var/cb/" 0
+                color_echo "-------- Copying cluster.conf and rabbitmq cookie"
+                remote_copy $last_conn "$_local_backup_dir/cluster.conf" "/etc/cb/" 0
+                remote_copy $last_conn "$_local_backup_dir/.erlang.cookie" "/var/cb/" 0
 
-            color_echo "-------- Removing RabbitMQ data folder"
-            remote_exec $last_conn "rm -rf $RabbitMQDataPath"
+                color_echo "-------- Removing RabbitMQ data folder"
+                remote_exec $last_conn "rm -rf $RabbitMQDataPath"
 
-            close_ssh_tunnel $last_conn
-            color_echo "--- Done"
+                close_ssh_tunnel $last_conn
+            else
+                color_echo "-------- Could not connect to the $_slave_name [\e[0m$_slave_host\e[1;33m]" "1;33"
+                color_echo "-------- Skipping"
+            fi
             unset _slave_user
             unset _slave_host
             _slave=0
@@ -98,13 +104,12 @@ parse_slave_host_from_backup () {
 install_cb_enterprise() {
     _remote_conn=$1
     _remote_backup_dir=$2
-    if [ ! $( remote_exec $_remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
+    if [ ! $( remote_exec $_remote_conn "test -e /etc/cb/gunicorn.conf && echo 1 || echo 0" ) == 1 ]
     then
-        color_echo "-------- CB Server is NOT installed on the remote machine ----------------------------"
+        color_echo "-------- CB Server is NOT installed on the remote machine" "1;33"
         color_echo "-------- Installing CB server"
         remote_exec $_remote_conn "tar -P -xf $_remote_backup_dir/cbyum.tar"
         remote_exec $_remote_conn "yum -y install cb-enterprise"
-        color_echo "--- Done"
     fi
 }
 
@@ -197,8 +202,8 @@ with db_session_context(config) as db:
     db.commit()
 EOF
 
-    OLD_IP=$( get_ip_from_hostname $_slave_host )
-    NEW_IP=$( get_ip_from_hostname $_new_slave_host )
+    OLD_IP=$( resolve_hostname $_slave_host )
+    NEW_IP=$( resolve_hostname $_new_slave_host )
 
     color_echo "-------- Updating hosts file"
     update_host_file $_slave_host $OLD_IP $_new_slave_host $NEW_IP $_master_conn $SAVE_HOSTS
@@ -234,7 +239,7 @@ init_slave_node () {
     _new_slave_host=$6
     _slave_node_id=$7
 
-    OLD_IP=$( get_ip_from_hostname $_slave_host )
+    OLD_IP=$( resolve_hostname $_slave_host )
 
     color_echo "-------- Copying config file for initialization"
     remote_copy $_master_conn "$_local_backup_dir/cbinit.conf" "$_remote_backup_dir" 0
@@ -246,7 +251,7 @@ init_slave_node () {
     remote_copy $_slave_conn "$_local_backup_dir/cluster.conf" "/etc/cb/" 0
 
     color_echo "-------- Running cbinit command"
-    remote_exec $_slave_conn "/usr/share/cb/cbinit --node-id $_slave_node_id $_remote_backup_dir/cbinit.conf > /dev/null"
+    remote_exec $_slave_conn "/usr/share/cb/cbinit --node-id $_slave_node_id $_remote_backup_dir/cbinit.conf"
 }
 
 restore_slave_backup (){

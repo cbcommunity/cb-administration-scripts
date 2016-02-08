@@ -21,7 +21,88 @@ get_tail_element (){
     echo ${arr[$(expr ${#arr[@]} - $index)]}
 }
 
-get_ip_from_hostname ()
+is_host_reachable(){
+    _user=$1
+    _host=$2
+    status=$(ssh -o BatchMode=yes -o ConnectTimeout=2 $_host echo 0 2>&1)
+    if [[ $status == 0 ]] ; then
+        return 0
+    elif [[ $status == "Permission denied"* ]] ; then
+        return 0
+    fi
+    echo $status
+    return 1
+}
+
+is_host_resolvable(){
+    _host=$1
+    if [ ! -z "$(resolve_hostname $_host)" ]; then
+        return 0
+    fi
+    return 1
+}
+
+check_host_time(){
+    _conn=$1
+    remote_time=$( remote_exec $_conn "date +%s" )
+    local_time=$(date +%s)
+    difference=$(( $local_time - $remote_time ))
+    difference=${difference#-}
+    if (($difference > 5 )); then
+        color_echo "There is $difference seconds time difference between local and remote servers" "1;33"
+        return $difference
+    fi
+    return 0
+}
+
+
+exit_if_error (){
+    _return_code=$1
+    _error_message=$2
+
+    if [ $_return_code != 0 ]
+    then
+        color_echo "$_error_message" "1;31"
+        color_echo "-------- Exiting now"
+        cleanup_tmp_files
+
+        if [ ! -z "$remote_conn" ];
+        then
+            close_ssh_tunnel $remote_conn
+        fi
+
+        if [ ! -z "$master_conn" ];
+        then
+            close_ssh_tunnel $master_conn
+        fi
+        exit $_return_code
+    fi
+}
+
+test_ssh_key() {
+    _user=$1
+    _host=$2
+    _key=$3
+    if [ $(ssh -q -o "BatchMode yes" $_user@$_host -i $_key "echo 1 && exit " || echo "0") == "1" ];
+    then
+        return 1
+    fi
+
+    color_echo "-------- Provided key is not authorized on the server [\e[0m$_host\e[1;32m]"
+
+    return 0
+}
+
+path_contains_backup(){
+    _path=$(sed -e 's#/$##' <<< $1)
+    if [ -f "$_path/cbconfig.tar" ]
+    then
+        return 0
+    fi
+    return 1
+}
+
+resolve_hostname ()
 {
     echo $(getent ahosts $1 | sed -n 1p | cut -d " " -f1 | tr -s " ")
 }
@@ -35,10 +116,11 @@ open_ssh_tunnel() {
 
     if [ ! -z "$key" ];
     then
-        ssh -o ControlPath=$last_conn -M -fnNT -L $PORT:$host:22 $user@$host -i $key
+        ssh -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnNT -L $PORT:$host:22 $user@$host -i $key
     else
-        ssh -o ControlPath=$last_conn -M -fnNT -L $PORT:$host:22 $user@$host
+        ssh -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnNT -L $PORT:$host:22 $user@$host
     fi
+    return $?
 }
 
 close_ssh_tunnel() {
@@ -71,6 +153,7 @@ remote_copy() {
     else
         scp -o ControlPath=$path $args $from_path $user@$host:$to_path
     fi
+    return $?
 }
 
 color_echo () {
@@ -141,14 +224,10 @@ extract_configs_from_backup ()
 
 regenerate_server_token () {
     _conn=$1
-
-    echo
-    color_echo "-------- Regenerating server token on the remote server -----------------------------"
+    color_echo "-------- Regenerating server token on the remote server"
     remote_exec $_conn "rm -rf /etc/cb/server.token"
     token_command=$(printf '%q' "from cb.alliance.token_manager import SetupServerToken; SetupServerToken().set_server_token('/etc/cb/server.token')")
     remote_exec $_conn "python -c $token_command"
-    color_echo "--- Done"
-    echo
 }
 
 
@@ -208,6 +287,7 @@ update_host_file () {
 }
 
 cleanup_tmp_files() {
+    color_echo "-------- Cleaning temp files"
     rm -rf "$LOCAL_BACKUP_DIR/cb.conf"
     rm -rf "$LOCAL_BACKUP_DIR/cluster.conf"
     rm -rf "$LOCAL_BACKUP_DIR/cb_ssh"

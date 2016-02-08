@@ -3,8 +3,8 @@
 install_master() {
     _conn=$1
     echo
-    color_echo "-------- CB Server is NOT installed ---------------------------------------------"
-    color_echo "-------- Installing CB Server ---------------------------------------------------"
+    color_echo "-------- CB Server is NOT installed" "1;33"
+    color_echo "-------- Installing CB Server"
     Cluster=0
     shards=
     nodes=
@@ -26,98 +26,72 @@ install_master() {
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbyum.tar"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbcerts.tar"
     remote_exec $_conn "yum -y install cb-enterprise"
-    color_echo "--- Done"
-    echo
-    color_echo "-------- Initializing CB Server -------------------------------------------------"
-    echo
-    color_echo "-------- Using ShardCount=$shards from the backup config ------------------------"
+    color_echo "-------- Initializing CB Server"
+    color_echo "-------- Using ShardCount=[\e[0m$shards\e[1;32m] from the backup config"
     remote_exec $_conn "/usr/share/cb/cbinit --proc-store-shards=$shards"
     remote_exec $_conn "service cb-enterprise stop"
-    color_echo "--- Done"
 
     # Start the cluster if in the cluster mode
     if [ $ClusterMembership == "Master" ]
     then
-        color_echo "-------- Starting and Stopping a standalone cluster for initialization ------------------------------"
+        color_echo "-------- Starting and Stopping a standalone cluster for initialization"
         remote_exec $_conn "/usr/share/cb/cbcluster start"
         remote_exec $_conn "/usr/share/cb/cbcluster stop"
-        color_echo "--- Done"
-
     fi
     unset IFS
 }
 
 copy_backup_to_remote () {
     _conn=$1
-    echo
-    color_echo "-------- Copying backup files to the remote machine ---------------------------------"
+    color_echo "-------- Copying backup files to the remote machine"
     remote_exec $_conn "mkdir -p $REMOTE_RESTORE_DIR"
     remote_copy $_conn "$LOCAL_BACKUP_DIR/*" "$REMOTE_RESTORE_DIR" 0 -r
-    color_echo "--- Done"
+    _ret_code=$?
+    return $_ret_code
 }
 
 extract_backup (){
     _conn=$1
 
-    echo
-    color_echo "-------- Extracting backup files on the remote machine ------------------------------"
-    echo
-
-    color_echo "-------- Removing known_hosts -------------------------"
+    color_echo "-------- Extracting backup files on the remote machine"
+    color_echo "-------- Removing known_hosts"
     remote_exec $_conn "rm -rf /root/.ssh/known_hosts"
-    color_echo "--- Done"
-    color_echo "-------- Extracting hosts file ------------------------"
+    color_echo "-------- Extracting hosts file"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbhosts.tar"
-    color_echo "--- Done"
-    color_echo "-------- Extracting iptables file ---------------------"
+    color_echo "-------- Extracting iptables file"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbiptables.tar"
-    color_echo "--- Done"
-    color_echo "-------- Extracting /etc/ssh folder -------------------"
+    color_echo "-------- Extracting /etc/ssh folder"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbssh.tar"
-    color_echo "--- Done"
-    color_echo "-------- Extracting /etc/cb/ folder -------------------"
+    color_echo "-------- Extracting /etc/cb/ folder"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbconfig.tar"
-    color_echo "--- Done"
-    color_echo "-------- Extracting rsyslog.conf file -----------------"
+    color_echo "-------- Extracting rsyslog.conf file"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrsyslog.tar"
-    color_echo "--- Done"
-    color_echo "-------- Extracting /etc/rsyslog.d/ folder  -----------"
+    color_echo "-------- Extracting /etc/rsyslog.d/ folder"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrsyslogd.tar"
-    color_echo "--- Done"
-    color_echo "-------- Extracting /etc/logrotate.d/cb folder --------"
+    color_echo "-------- Extracting /etc/logrotate.d/cb folder"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cblogrotate.tar"
-    color_echo "--- Done"
-    color_echo "-------- Removing rabbitmq data folder ----------------"
+    color_echo "-------- Removing rabbitmq data folder"
     remote_exec $_conn "rm -rf $RabbitMQDataPath"
-    color_echo "--- Done"
-    color_echo "-------- Extracting /usr/share/cb/syslog_templates ----"
+    color_echo "-------- Extracting /usr/share/cb/syslog_templates"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbceftemp.tar"
-    color_echo "--- Done"
-    color_echo "-------- Extracting .erlang.cookie file ---------------"
+    color_echo "-------- Extracting .erlang.cookie file"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrabbitmqcookie.tar"
-    color_echo "--- Done"
     color_echo "-------- Extracting /usr/share/cb/coreservices/installers/"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbinstallers.tar"
-    color_echo "--- Done"
 
     if [ $( remote_exec $_conn "test -e $REMOTE_RESTORE_DIR/cbrootauthkeys.tar && echo 1 || echo 0" ) == 1 ]
     then
-        color_echo "-------- Extracting /root/.ssh/authorized_keys ----"
+        color_echo "-------- Extracting /root/.ssh/authorized_keys"
         remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrootauthkeys.tar"
-        echo
-        color_echo "--- Done"
     fi
 
-    color_echo "-------- Extracting custom syslog templates -----------"
+    color_echo "-------- Extracting custom syslog templates"
     remote_exec $_conn "find $REMOTE_RESTORE_DIR -type f -iname \"syslog_custom*.tar\" -print0 | while IFS= read -r -d $'\0' line; do tar -P -xvf $line; done"
-    color_echo "--- Done"
-    echo
 }
 
 re_init_db () {
     _conn=$1
-    echo
-    color_echo "-------- Reinitializing database configs on the remote server -----------------------"
+    color_echo "-------- Reinitializing database configs on the remote server"
 
     insert_command=$(printf '%q' "INSERT INTO investigations VALUES ('1','Default Investigation',to_timestamp((select value from cb_settings where key='ServerInstallTime'),'YYYY-MM-DD hh24:mi:ss'),NULL,to_timestamp((select value from cb_settings where key='ServerInstallTime'),'YYYY-MM-DD hh24:mi:ss'),'Automatically Created at Installation Time');")
     delete_command=$(printf '%q' "delete from watchlist_entries where group_id <> '-1';")
@@ -136,9 +110,6 @@ re_init_db () {
     remote_exec $_conn "psql cb -p 5002 -c $update_command >/dev/null"
 
     remote_exec $_conn "service cb-pgsql stop"
-
-    color_echo "--- Done"
-    echo
 }
 
 generate_psqlvalues () {
@@ -170,8 +141,8 @@ update_all_slaves_with_new_master () {
     new_master=$2
     slave_key=$3
 
-    OLD_IP=$( get_ip_from_hostname $old_master )
-    NEW_IP=$( get_ip_from_hostname $new_master )
+    OLD_IP=$( resolve_hostname $old_master )
+    NEW_IP=$( resolve_hostname $new_master )
 
     slave=0
     slave_host=
@@ -181,55 +152,61 @@ update_all_slaves_with_new_master () {
     do
         if [[ $name =~ ^\[Slave* ]]; then
             slave=1
+            if [ ! -z "$_slave_name" ]
+            then
+                echo
+            fi
+            _slave_name=$name
+
         fi
-        if [ $slave == 1 ] && [ $name == "Host" ]; then
+        if [ $slave == 1 ] && [ "$name" == "Host" ]; then
             slave_host=$value
         fi
-        if [ $slave == 1 ] && [ $name == "User" ]; then
+        if [ $slave == 1 ] && [ "$name" == "User" ]; then
             slave_user=$value
         fi
         if [ $slave == 1 ] && [ ! -z "$slave_host" ] && [ ! -z "$slave_user"  ]; then
-            color_echo "-------- Updating $slave_host minion -------------------------------------------------"
+            color_echo "--------------------------------------------------------------------------------------"
+            color_echo "Updating $_slave_name [\e[0m$slave_host\e[1;32m]"
+            color_echo "--------------------------------------------------------------------------------------"
+
 
             open_ssh_tunnel $slave_user $slave_host $slave_key
+            if [ $? == 0 ];
+            then
+                remote_exec $last_conn "service cb-enterprise stop > /dev/null"
+                remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9"
 
-            remote_exec $last_conn "service cb-enterprise stop"
-            remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9"
+                color_echo "-------- Updating cb.conf"
+                remote_exec $last_conn "sed -r -i 's/RedisHost=.*/RedisHost=$new_master/g' /etc/cb/cb.conf"
+                remote_exec $last_conn "sed -r -i 's/DatabaseURL\=(.*\@).*(:.*)/DatabaseURL=\1$new_master\2/g' /etc/cb/cb.conf"
+                remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/cb/cb.conf"
 
-            color_echo "-------- Updating cb.conf ---------------------------------"
-            remote_exec $last_conn "sed -r -i 's/RedisHost=.*/RedisHost=$new_master/g' /etc/cb/cb.conf"
-            remote_exec $last_conn "sed -r -i 's/DatabaseURL\=(.*\@).*(:.*)/DatabaseURL=\1$new_master\2/g' /etc/cb/cb.conf"
-            remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/cb/cb.conf"
-            color_echo "--- Done"
+                color_echo "-------- Copying cluster.conf"
+                remote_copy $last_conn "$LOCAL_BACKUP_DIR/cluster.conf" "/etc/cb/" 0
 
-            color_echo "-------- Copying cluster.conf ----------------------------"
-            remote_copy $last_conn "$LOCAL_BACKUP_DIR/cluster.conf" "/etc/cb/" 0
-            color_echo "--- Done"
+                color_echo "-------- Updating iptables"
+                remote_exec $last_conn "service iptables stop > /dev/null"
+                remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
+                remote_exec $last_conn "service iptables start"
 
-            color_echo "-------- Updating iptables --------------------------------"
-            remote_exec $last_conn "service iptables stop"
-            remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
-            remote_exec $last_conn "service iptables start"
-            color_echo "--- Done"
+                color_echo "-------- Updating hosts file"
+                update_host_file $old_master $OLD_IP $new_master $NEW_IP $last_conn $SAVE_HOSTS
 
-            color_echo "-------- Updating hosts file ------------------------------"
-            update_host_file $old_master $OLD_IP $new_master $NEW_IP $last_conn $SAVE_HOSTS
-            color_echo "--- Done"
+                color_echo "-------- Removing rabbitmq data path"
+                remote_exec $last_conn "rm -rf $RabbitMQDataPath"
 
-            color_echo "-------- Removing rabbitmq data path ----------------------"
-            remote_exec $last_conn "rm -rf $RabbitMQDataPath"
-            color_echo "--- Done"
+                color_echo "-------- Copying rabbitmq cookie"
+                remote_copy $last_conn "$LOCAL_BACKUP_DIR/.erlang.cookie" "/var/cb/" 0
 
-            color_echo "-------- Copyinh rabbitmq cookie --------------------------"
-            remote_copy $last_conn "$LOCAL_BACKUP_DIR/.erlang.cookie" "/var/cb/" 0
-            color_echo "--- Done"
-
-
-
-            close_ssh_tunnel $last_conn
-            slave_user=
-            slave_host=
-            slave=0
+                close_ssh_tunnel $last_conn
+            else
+                color_echo "-------- Could not connect to the $slave_host minion ------" "1;33"
+                color_echo "-------- Skipping"
+            fi
+            unset slave_user
+            unset slave_host
+            _slave=0
         fi
     done < $LOCAL_BACKUP_DIR/cluster.conf
 }
@@ -258,39 +235,33 @@ with db_session_context(config) as db:
 EOF
     remote_copy $_conn "$LOCAL_BACKUP_DIR/cbupdate.py" "$REMOTE_RESTORE_DIR" 0
 
-    OLD_IP=$( get_ip_from_hostname $old_master )
-    NEW_IP=$( get_ip_from_hostname $new_master )
+    OLD_IP=$( resolve_hostname $old_master )
+    NEW_IP=$( resolve_hostname $new_master )
 
-    color_echo "-------- Updating hosts file ------------------------------"
+    color_echo "-------- Updating hosts file"
     update_host_file $old_master $OLD_IP $new_master $NEW_IP $_conn $SAVE_HOSTS
-    color_echo "--- Done"
 
-    color_echo "-------- Updating cb.conf ---------------------------------"
+    color_echo "-------- Updating cb.conf"
     remote_exec $_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/cb/cb.conf"
-    color_echo "--- Done"
 
-    color_echo "-------- Updating cluster.conf ----------------------------"
+    color_echo "-------- Updating cluster.conf"
     remote_exec $_conn "sed -i 's/$old_master\$/$new_master/g' /etc/cb/cluster.conf"
     remote_exec $_conn "sed -i 's/$OLD_IP/$new_master/g' /etc/cb/cluster.conf"
-    color_echo "--- Done"
 
-    color_echo "-------- Updating iptables --------------------------------"
+    color_echo "-------- Updating iptables"
     remote_exec $_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
-    color_echo "--- Done"
 
-    color_echo "-------- Updating master records in the db ----------------"
+    color_echo "-------- Updating master records in the db"
     remote_exec $_conn "service cb-pgsql start"
     remote_exec $_conn "python $REMOTE_RESTORE_DIR/cbupdate.py"
     remote_exec $_conn "service cb-pgsql stop"
-    color_echo "--- Done"
 
 }
 
 remove_shards () {
     _conn=$1
 
-    echo
-    color_echo "-------- Cleaning old shards on the new master --------------------------------------"
+    color_echo "-------- Cleaning old shards on the new master"
     # Getting shards info from backup config
     ret_val=$(read_cluster_config 'Master')
     shards=$(get_tail_element "$ret_val" '|' 1)
@@ -308,6 +279,4 @@ remove_shards () {
 
     # Removing all shards that are not configured to be on the new master
     remote_exec $_conn "find $DatastoreRootDir/solr/cbevents -mindepth 1 -maxdepth 1 $find -exec rm -rf {} \;"
-    color_echo "--- Done"
-    echo
 }
