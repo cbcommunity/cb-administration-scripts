@@ -19,7 +19,7 @@ where:
     -ma, --master-all   Optional. Backup master and all slaves. Master backups only. Ingnored if remote server is in standalone or slave mode
 ```
 
-All backups are created under `BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME`
+All backups are created under `BASE_FOLDER/YYYY-MM-DD-HH-mm-ss/HOSTNAME`
 
 Where:
 + `BASE_FOLDER` can be provided as command line argument. Otherwise it is set to a current directory of the script
@@ -34,7 +34,7 @@ This command will:
 - ssh into the master using the key
 - stop the cluster (or just the master)
 - perform the backup
-- copy backup files under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
+- copy backup files under `./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z` folder
 - start the cluster/master back
 
 ######Master ssh key is not present:
@@ -50,12 +50,12 @@ This command will:
 - ssh into the master using the key
 - stop the cluster
 - perform backup of the master
-- copy backup files in *./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z* folder
+- copy backup files in *./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z* folder
 - Then it will copy cb_ssh key to the local machine;
 - Using this key the script will
  - ssh into each slave
  - perform a backup for each one
- - save the backup under *./all_backups/YYYY-DD-MM-HH-mm-ss/SLAVE_HOST* folder, 
+ - save the backup under *./all_backups/YYYY-MM-DD-HH-mm-ss/SLAVE_HOST* folder, 
  -- where `SLAVE_HOST` is a `HOST` entry in the cluster.conf for the corresponding slave node.
 - Start the cluster back
 
@@ -74,7 +74,7 @@ This command will:
 - get `cb_ssh` key from the master
 - ssh into the `10.X.Y.Z` using `cb_ssh` key
 - perform backup of the slave
-- copy the backup under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
+- copy the backup under `./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z` folder
 - start the cluser back
 
 ######Master key and Master info NOT available:
@@ -88,7 +88,7 @@ This command will:
 - ssh into the `master`
 - stop the cluster
 - perform backup of the slave
-- copy the backup under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
+- copy the backup under `./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z` folder
 - start the cluser back
 
 
@@ -107,3 +107,27 @@ where:
     -s, --save-hosts    Optional. Save new (ipaddress, hostname) entry to the hosts file on all nodes in the cluster including master
                         Only needed if previous setup did not have host entries for cluster nodes in the hosts file
 ```
+
+###Examples:
+#####`Master` restore
+`bash restore.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups/YYYY-MM-DD-HH-mm-ss`
+
+This command will:
+- ssh into the `master` using the key
+- copy backup to the remote
+- check if CB server is installed
+- `IF NOT`
+ - extract yum folder from the bakup on `master`
+ - copy certs to the `master`
+ - install CB Server in standalone mode
+ - initialize CB server in cluster mode with shard number from the backup
+- stop the cluster
+- perform restore of backup on the master
+- update `master's` DB with new master info
+- update `/etc/hosts` file and `iptables` with new master info if necessary
+- update `cluster.conf` with new master info
+- Using `cb_ssh` key
+ - ssh into each slave
+ - update `/etc/hosts` file and `iptables` with new master info if necessary
+ - update `cluster.conf` with new master info
+- Start the cluster back
