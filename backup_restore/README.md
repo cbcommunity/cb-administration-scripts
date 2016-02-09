@@ -58,9 +58,9 @@ This command will:
  - save the backup under corresponding *./all_backups/YYYY-DD-MM-HH-mm-ss/SLAVE_HOST* folder, where SLAVE_HOST is a HOST entry in the cluster.conf for the slave node.
 - Start the cluster back
 
-In order to have the key available on the master the user will have to generate it first and copy it to the master node manually
-- ssh-keygen –t rsa –b 2048 -C "youremail@email.com"
-- ssh-copy-id MASTER_HOST -i PATH_TO_PUB_KEY
+> In order to have the key available on the master the user will have to generate it first and copy it to the master node manually
+> - ssh-keygen –t rsa –b 2048 -C "youremail@email.com"
+> - ssh-copy-id MASTER_HOST -i PATH_TO_PUB_KEY
 
 ####Assuming 10.X.Y.Z is in Slave mode
 To backup slave node
