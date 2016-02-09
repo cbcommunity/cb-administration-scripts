@@ -20,9 +20,10 @@ where:
 ```
 
 All backups are created under *BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME* <br>
-Where <br>
-&nbsp;&nbsp;&nbsp;BASE_FOLDER can be provided as command line argument. Otherwise it is set to a current directory of the script
-&nbsp;&nbsp;&nbsp;HOSTNAME is an IP address or a hostname
+
+Where:
++ BASE_FOLDER can be provided as command line argument. Otherwise it is set to a current directory of the script
++ HOSTNAME is an IP address or a hostname
 
 
 ###Examples:
