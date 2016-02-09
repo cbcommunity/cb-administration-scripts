@@ -82,10 +82,10 @@ This command will:
 
 This command will:
 - ssh into `10.X.Y.Z`
-- find out that this node is a slave node
-- copy it's cluster.conf
-- get master information from cluster conf
-- ssh into the master
+- find out that this node is a `slave` node
+- copy it's `cluster.conf`
+- get master information from `cluster.conf`
+- ssh into the `master`
 - stop the cluster
 - perform backup of the slave
 - copy the backup under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
