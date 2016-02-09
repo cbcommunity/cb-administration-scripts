@@ -37,14 +37,14 @@ This command will:
 - ssh into the master using the key
 - stop the cluster (or just the master)
 - perform the backup
-- copy backup archives under *./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z* folder
+- copy backup archives under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
 - start the cluster/master back
 
 ######If you don't have master ssh key:
 
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
 
-Same as the previous one, but since [-k master_key] is not provided the script will prompt you for the password first.
+Same as the previous one, but since `[-k master_key]` is not provided the script will prompt you for the password first.
 
 #####To backup master node and ALL SLAVES
 
