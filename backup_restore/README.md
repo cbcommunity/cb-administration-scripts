@@ -93,3 +93,17 @@ This command will:
 
 
 ## Restore
+
+The script is meant to run on a standalone box
+
+```
+bash restore.sh [-h help] -r host -u user -b path [-k key] [-s 1]
+
+where:
+    -r, --remote        Ip address or the hostname of the remote server to restore the backup on
+    -u, --user          Remote user to connect with
+    -b, --backup        Folder where the backup is
+    -k, --key           Optional. ssh key that can be used to connect to the remote server
+    -s, --save-hosts    Optional. Save new (ipaddress, hostname) entry to the hosts file on all nodes in the cluster including master
+                        Only needed if previous setup did not have host entries for cluster nodes in the hosts file
+```
