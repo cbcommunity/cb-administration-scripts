@@ -29,13 +29,13 @@ Where <br>
 ####Assuming 10.X.Y.Z is in Master mode
 #####To backup master ONLY node under ./all_backups folder
 ######If you have master ssh key:
-`bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`
+`bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`<br>
 This command will
--ssh into the master using the key
--stop it
--create all necessary archives
--copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
--start the master back
+- ssh into the master using the key
+- stop it
+- create all necessary archives
+- copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
+- start the master back
 
 ######If you dont have master ssh key:<br>
     `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups` <br>
