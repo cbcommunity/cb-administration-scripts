@@ -41,8 +41,7 @@ This command will:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
 
 Same as the previous one, but since `[-k master_key]` is not provided the script will prompt you for the password first.
-
-
+<br>
 #####`Master` and `ALL SLAVES` backup. Saved under `./all_backups folder`
 `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups -ma 1`
 
