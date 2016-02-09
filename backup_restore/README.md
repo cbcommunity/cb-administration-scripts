@@ -28,7 +28,6 @@ Where:
 ###Examples:
 #####`Master` only backup. Saved under `./all_backups folder`
 ######Master ssh key is present:
-
 `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`
 
 This command will:
@@ -38,14 +37,12 @@ This command will:
 - copy backup archives under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
 - start the cluster/master back
 
-######If you don't have master ssh key:
-
+######Master ssh key is not present:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
 
 Same as the previous one, but since `[-k master_key]` is not provided the script will prompt you for the password first.
 
-#####To backup master node and ALL SLAVES
-
+#####`Master` and `ALL SLAVES` backup. Saved under `./all_backups folder`
 `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups -ma 1`
 
 This command will:
