@@ -63,8 +63,8 @@ This command will:
 > - ssh-keygen –t rsa –b 2048 -C "youremail@email.com"
 > - ssh-copy-id MASTER_HOST -i PATH_TO_PUB_KEY
 
-####`Slave` backup
-#####Master key and Master info available:
+#####`Slave` backup
+######Master key and Master info available:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups -m 10.X.Y.W -mu root -mk master_ky`
 This command will:
 - ssh into the master first using the key
@@ -75,7 +75,7 @@ This command will:
 - copy the backup under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
 - start the cluser back
 
-#####Master key and Master info NOT available:
+######Master key and Master info NOT available:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
 This command will:
 - ssh into 10.X.Y.Z
