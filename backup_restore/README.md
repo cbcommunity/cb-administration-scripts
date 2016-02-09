@@ -131,3 +131,31 @@ This command will:
  - update `/etc/hosts` file and `iptables` with new master info if necessary
  - update `cluster.conf` with new master info
 - Start the cluster back
+
+#####`Slave` restore
+`bash restore.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups/YYYY-MM-DD-HH-mm-ss`
+
+This command will:
+- get `master's` info from the backup- 
+- ssh into the `master` using the key
+- copy `cb_ssh` key from master
+- ssh into the `slave` using the `cb_ssh` key
+- copy backup to the remote slave
+- check if CB server is installed
+- `IF NOT`
+ - extract yum folder from the bakup on `slave`
+ - copy certs to the `slave`
+ - install CB Server in standalone mode
+- generate config file for `slave` initialization
+- initialize CB server in `slave` mode with init config
+- stop the cluster
+- perform restore of backup on the `slave`
+- update `/etc/hosts` file and `iptables` with new `slave` info if necessary on `slave` node
+- update `cluster.conf` with new `slave` info on `slave` node
+- update `/etc/hosts` file and `iptables` with new `slave` info if necessary on `master` node
+- update `cluster.conf` with new `slave` info on `master` node
+- Using `cb_ssh` key
+ - ssh into each slave
+ - update `/etc/hosts` file and `iptables` with new `slave` info if necessary
+ - update `cluster.conf` with new `slave` info
+- Start the cluster back
