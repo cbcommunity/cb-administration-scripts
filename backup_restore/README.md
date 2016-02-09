@@ -9,14 +9,14 @@ The script is meant to run on a standalone box, but can be run on the CB Master 
 bash backup.sh [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mu backup all slaves] [-mk master key]
 
 where:
-    -r, --remote        Ip address or the hostname of the remote server to restore the backup on
-    -u, --user          User to use for remote server connection
-    -b, --backup        Optional. Folder path to store backup. If not provided current folder is used
-    -k, --key           Optional. Ssh key that can be used to connect to the remote server
-    -m, --master        Optional. In case of slave backup master host can be provided to avoid prompting for the password too many times
-    -mu, --master-user  Optional. In case of slave backup master user can be provided to avoid prompting for the password too many times
-    -mk, --master-key   Optional. Ssh key that can be used to connect to the master
-    -ma, --master-all   Optional. Backup master and all slaves. Ingnored if remote server is in standalone or slave mode
+    -r, --remote        Remote server IP address or Hostname. This server is used to restore the backup on.
+    -u, --user          User to connect to the remote server
+    -b, --backup        Optional. Base path to store the backup in. If not provided the current folder is used
+    -k, --key           Optional. Ssh key that to connect to the remote server. If not provided user will be prompted for the password
+    -m, --master        Optional. Master IP address or Hostname. Slave backups only. If hostname and master key is provided slave can be accessed without password
+    -mu, --master-user  Optional. User to connect to the master server. Slave backups only. Root is used if not provided
+    -mk, --master-key   Optional. Master ssh key
+    -ma, --master-all   Optional. Backup master and all slaves. Master backups only. Ingnored if remote server is in standalone or slave mode
 ```
 
 All backups are created under *BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME*
