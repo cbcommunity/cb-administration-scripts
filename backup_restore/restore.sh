@@ -60,9 +60,7 @@ then
 
     if [ ! $( remote_exec $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
     then
-        color_echo "-------- Something went wrong during CB Server installation" "1;31"
-        color_echo "-------- Exiting now"
-        exit 1
+        exit_if_error 1 "-------- Something went wrong during CB Server installation"
     fi
 
     color_echo "--------------------------------------------------------------------------------------"
@@ -262,9 +260,7 @@ else
     install_cb_enterprise $remote_conn "$REMOTE_RESTORE_DIR"
     if [ ! $( remote_exec $remote_conn "test -e /etc/cb/gunicorn.conf && echo 1 || echo 0" ) == 1 ]
     then
-        color_echo "-------- Something went wrong during CB Server installation"
-        color_echo "-------- Exiting now"
-        exit 1
+        exit_if_error 1 "-------- Something went wrong during CB Server installation"
     fi
 
     color_echo "--------------------------------------------------------------------------------------"
@@ -283,9 +279,7 @@ else
 
     if [ ! $( remote_exec $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
     then
-        color_echo "-------- Something went wrong during Slave initialization"
-        color_echo "-------- Exiting now"
-        exit 1
+        exit_if_error 1 "-------- Something went wrong during CB Server installation"
     fi
 
     # ************************************************************************************************#

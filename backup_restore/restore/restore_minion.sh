@@ -249,6 +249,7 @@ init_slave_node () {
     sed -i "s/$_slave_host\$/$_new_slave_host/g" $_local_backup_dir/cluster.conf
     sed -i "s/$OLD_IP/$_new_slave_host/g" $_local_backup_dir/cluster.conf
     remote_copy $_slave_conn "$_local_backup_dir/cluster.conf" "/etc/cb/" 0
+    remote_copy $_slave_conn "$_local_backup_dir/cbinit.conf" "$_remote_backup_dir/" 0
 
     color_echo "-------- Running cbinit command"
     remote_exec $_slave_conn "/usr/share/cb/cbinit --node-id $_slave_node_id $_remote_backup_dir/cbinit.conf"
