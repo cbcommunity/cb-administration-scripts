@@ -34,7 +34,7 @@ This command will:
 - ssh into the master using the key
 - stop the cluster (or just the master)
 - perform the backup
-- copy backup archives under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
+- copy backup files under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
 - start the cluster/master back
 
 ######Master ssh key is not present:
@@ -49,8 +49,8 @@ Same as the previous one, but since `[-k master_key]` is not provided the script
 This command will:
 - ssh into the master using the key
 - stop the cluster
-- create all necessary archives,
-- copy archives under *./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z* folder
+- perform backup of the master
+- copy backup files in *./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z* folder
 - Then it will copy cb_ssh key to the local machine;
 - Using this key the script will
  - ssh into each slave
@@ -69,10 +69,10 @@ This command will:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups -m 10.X.Y.W -mu root -mk master_ky`
 
 This command will:
-- ssh into the master first using the key
+- ssh into the `master` first using the key
 - stop the cluster
-- get cb_ssh key from the master
-- ssh into the `10.X.Y.Z` using cb_ssh key from the master
+- get `cb_ssh` key from the master
+- ssh into the `10.X.Y.Z` using `cb_ssh` key
 - perform backup of the slave
 - copy the backup under `./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z` folder
 - start the cluser back
@@ -81,7 +81,7 @@ This command will:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
 
 This command will:
-- ssh into 10.X.Y.Z
+- ssh into `10.X.Y.Z`
 - find out that this node is a slave node
 - copy it's cluster.conf
 - get master information from cluster conf
