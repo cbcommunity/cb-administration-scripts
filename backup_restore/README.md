@@ -3,7 +3,7 @@
 
 ## Backup
 
-The script is meant to be run on a separate from CB cluster machine, but can be run on the same machine as well.
+The script is meant to run on a standalone box, but can be run on the CB Master server as well.
 
 ```bash
 bash backup.sh [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mu backup all slaves] [-mk master key]
