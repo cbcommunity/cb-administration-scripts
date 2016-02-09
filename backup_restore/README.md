@@ -40,28 +40,32 @@ This command will:
 - copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
 - start the master back
 
-######If you don't have master ssh key:
-- `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
+If you don't have master ssh key:
+
+`bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
+
 Same as the previous one, but since [-k master_key] is not provided the script will prompt you for the password first.
 
+
 #####To backup master node and ALL SLAVES
-    `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups -ma 1`
+
+`bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups -ma 1`
 
 This command will
--ssh into the master using the key
--stop the cluster
--create all necessary archives,
--copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
--Then it will copy cb_ssh key to the local machine;
--Using this key the script will
--ssh into each slave
--perform a backup for each one
--save the backup under corresponding ./all_backups/YYYY-DD-MM-HH-mm-ss/SLAVE_HOST folder, where SLAVE_HOST is a HOST entry in the cluster.conf for the slave node.
+- ssh into the master using the key
+- stop the cluster
+- create all necessary archives,
+- copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
+- Then it will copy cb_ssh key to the local machine;
+- Using this key the script will
+* ssh into each slave
+* perform a backup for each one
+* save the backup under corresponding *./all_backups/YYYY-DD-MM-HH-mm-ss/SLAVE_HOST* folder, where SLAVE_HOST is a HOST entry in the cluster.conf for the slave node.
 -Start the cluster back
 
 In order to have the key available on the master the user will have to generate it first and copy it to the master node manually
-    ssh-keygen –t rsa –b 2048 -C "youremail@email.com"
-    ssh-copy-id MASTER_HOST -i PATH_TO_PUB_KEY
+- ssh-keygen –t rsa –b 2048 -C "youremail@email.com"
+- ssh-copy-id MASTER_HOST -i PATH_TO_PUB_KEY
 
 ####Assuming 10.X.Y.Z is in Slave mode
 To backup slave node
