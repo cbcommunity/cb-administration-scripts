@@ -19,9 +19,9 @@ where:
     -ma, --master-all   Optional. Backup master and all slaves. Ingnored if remote server is in standalone or slave mode
 ```
 
-All backups are created under BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME <br>
+All backups are created under *BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME* <br>
 Where <br>
-&nbsp;&nbsp;&nbsp;BASE_FOLDER can be provided as command line argument. Otherwise it set to a current directory of the script
+&nbsp;&nbsp;&nbsp;BASE_FOLDER can be provided as command line argument. Otherwise it is set to a current directory of the script
 &nbsp;&nbsp;&nbsp;HOSTNAME is an IP address or a hostname
 
 
@@ -29,7 +29,8 @@ Where <br>
 ####Assuming 10.X.Y.Z is in Master mode
 #####To backup master ONLY node under ./all_backups folder
 ######If you have master ssh key:
-`bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`<br>
+- `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`<br>
+
 This command will
 - ssh into the master using the key
 - stop it
