@@ -6,7 +6,7 @@
 The script is meant to run on a standalone box, but can be run on the CB Master server as well.
 
 ```bash
-bash backup.sh [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mu backup all slaves] [-mk master key]
+bash backup.sh [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mk master key] [-ma backup all slaves] [-ss 1]
 
 where:
     -r, --remote        Remote server IP address or Hostname. This server is used to restore the backup on.
@@ -17,6 +17,7 @@ where:
     -mu, --master-user  Optional. User to connect to the master server. Slave backups only. Root is used if not provided
     -mk, --master-key   Optional. Master ssh key
     -ma, --master-all   Optional. Backup master and all slaves. Master backups only. Ingnored if remote server is in standalone or slave mode
+    -ss, --skip-stop    Optional. Skip stopping the cluster/master while backing up
 ```
 
 All backups are created under `BASE_FOLDER/YYYY-MM-DD-HH-mm-ss/HOSTNAME`
@@ -32,10 +33,10 @@ Where:
 
 This command will:
 - ssh into the master using the key
-- stop the cluster (or just the master)
+- stop the cluster/master (unless requested to skip stop)
 - perform the backup
 - copy backup files under `./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z` folder
-- start the cluster/master back
+- start the cluster/master back (unless requested to skip stop)
 
 ######Master ssh key is not present:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
@@ -48,7 +49,7 @@ Same as the previous one, but since `[-k master_key]` is not provided the script
 
 This command will:
 - ssh into the master using the key
-- stop the cluster
+- stop the cluster (unless requested to skip stop)
 - perform backup of the master
 - copy backup files in *./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z* folder
 - Then it will copy cb_ssh key to the local machine;
@@ -57,7 +58,7 @@ This command will:
  - perform a backup for each one
  - save the backup under *./all_backups/YYYY-MM-DD-HH-mm-ss/SLAVE_HOST* folder, 
  -- where `SLAVE_HOST` is a `HOST` entry in the cluster.conf for the corresponding slave node.
-- Start the cluster back
+- Start the cluster back (unless requested to skip stop)
 
 > In order to have the key available on the master the user will have to generate it first and copy it to the master node manually
 > - ssh-keygen –t rsa –b 2048 -C "youremail@email.com"
@@ -70,12 +71,12 @@ This command will:
 
 This command will:
 - ssh into the `master` first using the key
-- stop the cluster
+- stop the cluster (unless requested to skip stop)
 - get `cb_ssh` key from the master
 - ssh into the `10.X.Y.Z` using `cb_ssh` key
 - perform backup of the slave
 - copy the backup under `./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z` folder
-- start the cluser back
+- start the cluser back (unless requested to skip stop)
 
 ######Master key and Master info NOT available:
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
@@ -86,10 +87,10 @@ This command will:
 - copy it's `cluster.conf`
 - get master information from `cluster.conf`
 - ssh into the `master`
-- stop the cluster
+- stop the cluster (unless requested to skip stop)
 - perform backup of the slave
 - copy the backup under `./all_backups folder/YYYY-MM-DD-HH-mm-ss/10.X.Y.Z` folder
-- start the cluser back
+- start the cluser back (unless requested to skip stop)
 
 
 ## Restore
@@ -136,7 +137,7 @@ This command will:
 `bash restore.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups/YYYY-MM-DD-HH-mm-ss`
 
 This command will:
-- get `master's` info from the backup- 
+- get `master's` info from the backup
 - ssh into the `master` using the key
 - copy `cb_ssh` key from master
 - ssh into the `slave` using the `cb_ssh` key

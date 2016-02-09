@@ -1,7 +1,6 @@
 #! /bin/bash
 
 DATE=$(date +%Y-%m-%d-%H-%M-%S)
-REMOTE_RESTORE_DIR=/tmp/restore/$DATE
 PORT=50000
 last_conn=
 
@@ -127,7 +126,8 @@ close_ssh_tunnel() {
     path=$1
     user=$( get_tail_element $path '_' 3 )
     host=$( get_tail_element $path '_' 2 )
-    ssh -o ControlPath=$path -O exit $user@$host
+    cleanup_remote_tmp_folder $path $host
+    ssh -q -o ControlPath=$path -O exit $user@$host
 }
 
 remote_exec() {
@@ -287,7 +287,7 @@ update_host_file () {
 }
 
 cleanup_tmp_files() {
-    color_echo "-------- Cleaning temp files"
+    color_echo "-------- Cleaning temp files in \e[0m$LOCAL_BACKUP_DIR\e[1;32m on local"
     rm -rf "$LOCAL_BACKUP_DIR/cb.conf"
     rm -rf "$LOCAL_BACKUP_DIR/cluster.conf"
     rm -rf "$LOCAL_BACKUP_DIR/cb_ssh"
@@ -298,3 +298,30 @@ cleanup_tmp_files() {
     rm -rf "$LOCAL_BACKUP_DIR/.erlang.cookie"
 }
 
+remote_remote_tmp_folder(){
+    _conn=$1
+    _host=$2
+    _folder=$3
+
+    if [ ! -z "$_dir_to_clean" ]
+    then
+        color_echo "-------- Cleaning temp files [\e[0m$_dir_to_clean/*\e[1;32m] on remote [\e[0m$_host\e[1;32m]"
+        remote_exec $_conn "rm -rf $_dir_to_clean"
+    fi
+}
+
+cleanup_remote_tmp_folder(){
+    _conn=$1
+    _host=$2
+
+    if [ "$(remote_exec $_conn '[ -d $REMOTE_RESTORE_DIR ] && echo 0 || echo 1')" == "0" ]
+    then
+        _dir_to_clean=$REMOTE_RESTORE_DIR
+        remote_remote_tmp_folder $_conn $_host $_dir_to_clean
+    fi
+    if [ "$(remote_exec $_conn '[ -d $REMOTE_BACKUP_DIR ] && echo 0 || echo 1')" == "0" ]
+    then
+        _dir_to_clean=$REMOTE_BACKUP_DIR
+        remote_remote_tmp_folder $_conn $_host $_dir_to_clean
+    fi
+}

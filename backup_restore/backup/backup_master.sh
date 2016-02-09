@@ -15,6 +15,10 @@ backup_all_slaves (){
     do
         if [[ "$name" =~ ^\[Slave* ]]; then
             _slave=1
+            if [ ! -z "$_slave_name" ]
+            then
+                echo
+            fi
             _slave_name=$name
         fi
         if [ $_slave == 1 ] && [ "$name" == "Host" ]; then
@@ -24,7 +28,6 @@ backup_all_slaves (){
             _slave_user=$value
         fi
         if [ $_slave == 1 ] && [ ! -z "$_slave_host" ] && [ ! -z "$_slave_user"  ]; then
-            echo
             color_echo "--------------------------------------------------------------------------------------"
             color_echo "Backing up $_slave_name [\e[0m$_slave_host\e[1;32m]"
             color_echo "--------------------------------------------------------------------------------------"

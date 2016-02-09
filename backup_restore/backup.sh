@@ -37,7 +37,6 @@ then
     # ************************************************************************************************#
     # **************************** Master Configuration is found *************************************#
     # ************************************************************************************************#
-    echo
     color_echo "--------------------------------------------------------------------------------------"
     color_echo "$ClusterMembership configuration is found on the remote server"
     color_echo "--------------------------------------------------------------------------------------"
@@ -46,17 +45,17 @@ then
     # **************************** Stopping CB Server on the remote server ***************************#
     # ************************************************************************************************#
     echo
-    echo
     color_echo "--------------------------------------------------------------------------------------"
     color_echo "Backing up \e[0mMASTER\e[1;32m"
     color_echo "--------------------------------------------------------------------------------------"
-    color_echo "-------- Stopping cb-enterprise on the master"
-    stop_start_cb_server $remote_conn "stop"
-
+    if [ "$SKIP_MASTER_STOP" != "1" ]
+    then
+        color_echo "-------- Stopping cb-enterprise on the master"
+        stop_start_cb_server $remote_conn "stop"
+    fi
     # ************************************************************************************************#
     # **************************** Backing up master *************************************************#
     # ************************************************************************************************#
-    echo
     backup_node $remote_conn $ClusterMembership $LOCAL_BACKUP_DIR
 
     color_echo "--------------------------------------------------------------------------------------"
@@ -68,7 +67,6 @@ then
     # ************************************************************************************************#
     if [ $ClusterMembership == "Master" ] && [ "$MASTER_ALL" == "1" ];
     then
-        echo
         echo
         color_echo "--------------------------------------------------------------------------------------"
         color_echo "Backing up \e[0mALL SLAVES\e[1;32m"
@@ -89,10 +87,14 @@ then
     # ************************************************************************************************#
     # **************************** Starting CB Server on the remote server ***************************#
     # ************************************************************************************************#
+    if [ "$SKIP_MASTER_STOP" != "1" ]
+    then
+        echo
+        color_echo "-------- Starting cb-enterprise on the master"
+        stop_start_cb_server $remote_conn "start"
+        color_echo "--- Done"
+    fi
     echo
-    color_echo "-------- Starting cb-enterprise on the master"
-    stop_start_cb_server $remote_conn "start"
-    color_echo "--- Done"
 else
     # ************************************************************************************************#
     # **************************** Slave Configuration is found *************************************#
@@ -176,8 +178,11 @@ else
     color_echo "--------------------------------------------------------------------------------------"
     color_echo "Backing up SLAVE [\e[0m$REMOTE_HOST\e[1;32m]"
     color_echo "--------------------------------------------------------------------------------------"
-    color_echo "-------- Stopping cb-enterprise on the master"
-    stop_start_cb_server $master_conn "stop"
+    if [ "$SKIP_MASTER_STOP" != "1" ]
+    then
+        color_echo "-------- Stopping cb-enterprise on the master"
+        stop_start_cb_server $master_conn "stop"
+    fi
 
     # ************************************************************************************************#
     # **************************** Backing up salve **************************************************#
@@ -191,20 +196,24 @@ else
     # ************************************************************************************************#
     # **************************** Starting CB Server on the remote server ***************************#
     # ************************************************************************************************#
+    if [ "$SKIP_MASTER_STOP" != "1" ]
+    then
+        echo
+        color_echo "-------- Starting cb-enterprise on the master"
+        stop_start_cb_server $master_conn "start"
+        color_echo "--- Done"
+    fi
     echo
-    color_echo "-------- Starting cb-enterprise on the master"
-    stop_start_cb_server $master_conn "start"
-    color_echo "--- Done"
-
     close_ssh_tunnel $master_conn
 fi
 
-cleanup_tmp_files
 close_ssh_tunnel $remote_conn
-
-color_echo "Log File: $LOG_DIR/backup.log"
+cleanup_tmp_files
 
 echo
 color_echo "--------------------------------------------------------------------------------------"
 color_echo "Backup is successful"
 color_echo "--------------------------------------------------------------------------------------"
+
+echo
+color_echo "Log File: $LOG_DIR/backup.log" "1;33"

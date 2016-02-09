@@ -1,15 +1,17 @@
 #! /bin/bash
 
-usage="$(basename "$0") [-h help] | -r host -u user -b path [-k key]
+usage="$(basename "$0") [-h help] -r host -u user -b path [-k key] [-s save new host entry]
 
 where:
     -r, --remote        Ip address or the hostname of the remote server to restore the backup on
     -u, --user          User to use for remote server connection
     -b, --backup        Folder path with backup for restore
     -k, --key           Optional. ssh key that can be used to connect to the remote server
-    -s, --save-hosts    Optional. Save new (ipaddress, hostname) entry to the hosts file on all nodes in the cluster
+    -s, --save-hosts    Optional. Save new (ipaddress, hostname) entry to the hosts file on all nodes in the cluster including master
                         Only needed if previous setup did not have host entries for cluster nodes in the hosts file
 "
+
+REMOTE_RESTORE_DIR=/tmp/restore/$DATE
 
 parse_input() {
     while [[ $# > 1 ]]

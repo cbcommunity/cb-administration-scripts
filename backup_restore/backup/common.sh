@@ -1,16 +1,17 @@
 #!/bin/bash
 
-usage="$(basename "$0") [-h help] | -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mu backup all slaves] [-mk master key]
+usage="$(basename "$0") [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mk master key] [-ma 1] [-ss 1]
 
 where:
-    -r, --remote        Ip address or the hostname of the remote server to restore the backup on
-    -u, --user          User to use for remote server connection
-    -b, --backup        Optional. Folder path to store backup. If not provided current folder is used
-    -k, --key           Optional. Ssh key that can be used to connect to the remote server
-    -m, --master        Optional. In case of slave backup master host can be provided to avoid prompting for the password too many times.
-    -mu, --master-user  Optional. In case of slave backup master user can be provided to avoid prompting for the password too many times.
-    -mk, --master-key   Optional. Ssh key that can be used to connect to the master
-    -ma, --master-all   Optional. Backup master and all slaves
+    -r, --remote        Remote server IP address or Hostname. This server is used to restore the backup on.
+    -u, --user          User to connect to the remote server
+    -b, --backup        Optional. Base path to store the backup in. If not provided the current folder is used
+    -k, --key           Optional. Ssh key that to connect to the remote server. If not provided user will be prompted for the password
+    -m, --master        Optional. Master IP address or Hostname. Slave backups only. If hostname and master key is provided slave can be accessed without password
+    -mu, --master-user  Optional. User to connect to the master server. Slave backups only. Root is used if not provided
+    -mk, --master-key   Optional. Master ssh key
+    -ma, --master-all   Optional. Backup master and all slaves. Master backups only. Ingnored if remote server is in standalone or slave mode
+    -ss, --skip-stop    Optional. Skip stopping the cluster/master while backing up
 "
 
 LOCAL_BACKUP_DIR_BASE=.
@@ -39,6 +40,10 @@ parse_input() {
         LOCAL_BACKUP_DIR_BASE=$(sed 's/\/$//' <<< "$2")
         shift # past argument
         ;;
+        -k|--key)
+        SSH_KEY="$2"
+        shift # past argument
+        ;;
         -m|--master)
         MASTER_HOST="$2"
         shift # past argument
@@ -55,8 +60,8 @@ parse_input() {
         MASTER_ALL="$2"
         shift # past argument
         ;;
-        -k|--key)
-        SSH_KEY="$2"
+        -ss|--skip-stop)
+        SKIP_MASTER_STOP="$2"
         shift # past argument
         ;;
         --default)
@@ -221,7 +226,11 @@ backup_node () {
         remote_exec $_conn "pg_dumpall -p 5002 --roles-only -f $REMOTE_BACKUP_DIR/psqlroles.sql"
         remote_exec $_conn "sed -i 's/CREATE ROLE cb;/DO \$\$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_user WHERE usename = \x27cb\x27 ) THEN CREATE ROLE cb; END IF; END\$\$;/' $REMOTE_BACKUP_DIR/psqlroles.sql"
         remote_exec $_conn "sed -i 's/CREATE ROLE root;/DO \$\$BEGIN IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_user WHERE usename = \x27root\x27 ) THEN CREATE ROLE root; END IF; END\$\$;/'  $REMOTE_BACKUP_DIR/psqlroles.sql"
-        remote_exec $_conn "service cb-pgsql stop"
+
+        if [ "$SKIP_MASTER_STOP" != "1" ]
+        then
+            remote_exec $_conn "service cb-pgsql stop"
+        fi
 
         # Syslog CEF templates
         remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbceftemp.tar /usr/share/cb/syslog_templates"
@@ -231,6 +240,5 @@ backup_node () {
     fi
     color_echo "-------- Copying backup to the $_local_backup_dir/"
     remote_copy $_conn "$REMOTE_BACKUP_DIR/*" "$_local_backup_dir/" 1 -r
-    remote_exec $_conn "rm -rf $REMOTE_BACKUP_DIR"
 }
 
