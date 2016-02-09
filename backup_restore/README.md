@@ -26,10 +26,8 @@ Where:
 + `HOSTNAME` is an IP address or a hostname
 
 ###Examples:
-#####Assuming 10.X.Y.Z is in `Master` mode
-#####To backup master node ONLY under `./all_backups folder`
-
-######If you have master ssh key:
+#####`Master` only backup. Saved under `./all_backups folder`
+######Master ssh key is present:
 
 `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`
 
