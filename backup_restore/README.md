@@ -4,7 +4,7 @@
 ## Backup
 
 The script is meant to be run on a separate from CB cluster machine, but can be run on the same as well.
-```
+```bash
 bash backup.sh [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mu backup all slaves] [-mk master key]
 
 where:
@@ -26,12 +26,10 @@ Where
 ###Examples:
 ####Assuming 10.X.Y.Z is in Master mode
 To backup master ONLY node under ./all_backups folder
-    If you have master ssh key:
-        ```
-        bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups
-        ```
-        This command will
-            ssh into the master using the key
+⋅⋅⋅If you have master ssh key:
+⋅⋅⋅⋅⋅⋅`bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`
+⋅⋅⋅⋅⋅⋅⋅⋅⋅This command will
+⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅⋅ssh into the master using the key
             stop it
             create all necessary archives
             copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
