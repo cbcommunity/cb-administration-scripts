@@ -28,35 +28,34 @@ Where <br>
 ###Examples:
 ####Assuming 10.X.Y.Z is in Master mode
 
-To backup master ONLY node under ./all_backups folder
-If you have master ssh key:
-`bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`
+#####To backup master ONLY node under ./all_backups folder<br>
+######If you have master ssh key:<br>
+`bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`<br>
 This command will
-ssh into the master using the key
-            stop it
-            create all necessary archives
-            copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
-            start the master back
+-ssh into the master using the key
+-stop it
+-create all necessary archives
+-copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
+-start the master back
 
-    If you dont have master ssh key:
-        bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups
+######If you dont have master ssh key:<br>
+    `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups` <br>
+Same as the previous one, but since [-k master_key] is not provided the script will prompt you for the password first.
 
-        Same as the previous one, but since [-k master_key] is not provided the script will prompt you for the password first.
+#####To backup master node and ALL SLAVES
+    `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups -ma 1`
 
-To backup master node and ALL SLAVES
-    bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups -ma 1
-
-    This command will
-        ssh into the master using the key
-        stop the cluster
-        create all necessary archives,
-        copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
-        Then it will copy cb_ssh key to the local machine;
-        Using this key the script will
-            ssh into each slave
-            perform a backup for each one
-            save the backup under corresponding ./all_backups/YYYY-DD-MM-HH-mm-ss/SLAVE_HOST folder, where SLAVE_HOST is a HOST entry in the cluster.conf for the slave node.
-        Start the cluster back
+This command will
+-ssh into the master using the key
+-stop the cluster
+-create all necessary archives,
+-copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
+-Then it will copy cb_ssh key to the local machine;
+-Using this key the script will
+-ssh into each slave
+-perform a backup for each one
+-save the backup under corresponding ./all_backups/YYYY-DD-MM-HH-mm-ss/SLAVE_HOST folder, where SLAVE_HOST is a HOST entry in the cluster.conf for the slave node.
+-Start the cluster back
 
 In order to have the key available on the master the user will have to generate it first and copy it to the master node manually
     ssh-keygen –t rsa –b 2048 -C "youremail@email.com"
