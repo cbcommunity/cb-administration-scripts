@@ -50,7 +50,7 @@ Same as the previous one, but since [-k master_key] is not provided the script w
 
 `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups -ma 1`
 
-This command will
+This command will:
 - ssh into the master using the key
 - stop the cluster
 - create all necessary archives,
