@@ -19,10 +19,10 @@ where:
     -ma, --master-all   Optional. Backup master and all slaves. Ingnored if remote server is in standalone or slave mode
 ```
 
-All backups are created under BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME
-Where
-⋅⋅⋅ BASE_FOLDER can be provided as command line argument. Otherwise it set to a current directory of the script
-⋅⋅⋅ HOSTNAME is an IP address or a hostname
+All backups are created under BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME <br>
+Where <br>
+&nbsp;&nbsp;&nbsp;BASE_FOLDER can be provided as command line argument. Otherwise it set to a current directory of the script
+&nbsp;&nbsp;&nbsp;HOSTNAME is an IP address or a hostname
 
 
 ###Examples:
