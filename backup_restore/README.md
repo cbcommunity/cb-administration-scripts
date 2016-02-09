@@ -35,10 +35,10 @@ Where:
 
 This command will:
 - ssh into the master using the key
-- stop it
-- create all necessary archives
-- copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
-- start the master back
+- stop the cluster (or just the master)
+- perform the backup
+- copy backup archives under *./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z* folder
+- start the cluster/master back
 
 ######If you don't have master ssh key:
 
