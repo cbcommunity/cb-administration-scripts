@@ -27,9 +27,9 @@ Where:
 
 ###Examples:
 ####Assuming 10.X.Y.Z is in Master mode
-#####To backup master ONLY node under ./all_backups folder
+####To backup master ONLY node under ./all_backups folder
 
-If you have master ssh key:
+#####If you have master ssh key:
 
 `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`
 
@@ -40,7 +40,7 @@ This command will:
 - copy archives under ./all_backups folder/YYYY-DD-MM-HH-mm-ss/10.X.Y.Z folder
 - start the master back
 
-If you don't have master ssh key:
+#####If you don't have master ssh key:
 
 `bash backup.sh -r 10.X.Y.Z -u root -b ./all_backups`
 
