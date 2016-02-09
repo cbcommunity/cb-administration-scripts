@@ -20,18 +20,18 @@ where:
 ```
 
 All backups are created under *BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME*
+
 Where:
 + BASE_FOLDER can be provided as command line argument. Otherwise it is set to a current directory of the script
 + HOSTNAME is an IP address or a hostname
-
 
 ###Examples:
 ####Assuming 10.X.Y.Z is in Master mode
 #####To backup master ONLY node under ./all_backups folder
 ######If you have master ssh key:
-- `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`<br>
+- `bash backup.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups`
 
-This command will
+This command will:
 - ssh into the master using the key
 - stop it
 - create all necessary archives
