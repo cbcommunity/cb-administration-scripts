@@ -17,10 +17,11 @@ where:
     -mk, --master-key   Optional. Ssh key that can be used to connect to the master
     -ma, --master-all   Optional. Backup master and all slaves. Ingnored if remote server is in standalone or slave mode
 ```
+
 All backups are created under BASE_FOLDER/YYYY-DD-MM-HH-mm-ss/HOSTNAME
 Where
-    BASE_FOLDER can be provided as command line argument. Otherwise it set to a current directory of the script
-    HOSTNAME is an IP address or a hostname
+⋅⋅⋅ BASE_FOLDER can be provided as command line argument. Otherwise it set to a current directory of the script
+⋅⋅⋅ HOSTNAME is an IP address or a hostname
 
 ###Examples:
 ####Assuming 10.X.Y.Z is in Master mode
