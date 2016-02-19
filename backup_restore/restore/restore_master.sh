@@ -28,7 +28,7 @@ install_master() {
     remote_exec $_conn "yum -y install cb-enterprise"
     color_echo "-------- Initializing CB Server"
     color_echo "-------- Using ShardCount=[\e[0m$shards\e[1;32m] from the backup config"
-    remote_exec $_conn "/usr/share/cb/cbinit --proc-store-shards=$shards"
+    remote_exec $_conn "/usr/share/cb/cbinit --proc-store-shards=$shards" 1
     remote_exec $_conn "service cb-enterprise stop"
 
     # Start the cluster if in the cluster mode

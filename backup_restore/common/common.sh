@@ -133,9 +133,14 @@ close_ssh_tunnel() {
 remote_exec() {
     path=$1
     remote_command=$2
+    keep_input=$3
     user=$( get_tail_element $path '_' 3 )
     host=$( get_tail_element $path '_' 2 )
-    ssh -o ControlPath=$path $user@$host "$remote_command" < /dev/null
+    if [ ! -z "$keep_input" ]; then
+       ssh -o ControlPath=$path $user@$host "$remote_command"
+    else
+       ssh -o ControlPath=$path $user@$host "$remote_command" < /dev/null
+    fi
 }
 
 remote_copy() {
