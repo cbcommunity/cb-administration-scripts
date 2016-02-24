@@ -62,6 +62,8 @@ extract_backup (){
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbiptables.tar"
     color_echo "-------- Extracting /etc/ssh folder"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbssh.tar"
+    color_echo "-------- Extracting /etc/yum.repos.d/ folder"
+    remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbyum.tar"
     color_echo "-------- Extracting /etc/cb/ folder"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbconfig.tar"
     color_echo "-------- Extracting rsyslog.conf file"
