@@ -28,6 +28,8 @@ is_host_reachable(){
         return 0
     elif [[ $status == "Permission denied"* ]] ; then
         return 0
+    elif [[ $status == "Host key verification failed."* ]] ; then
+        return 0
     fi
     echo $status
     return 1
