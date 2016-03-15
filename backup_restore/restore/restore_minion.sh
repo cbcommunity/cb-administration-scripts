@@ -109,6 +109,7 @@ install_cb_enterprise() {
         color_echo "-------- CB Server is NOT installed on the remote machine" "1;33"
         color_echo "-------- Installing CB server"
         remote_exec $_remote_conn "tar -P -xf $_remote_backup_dir/cbyum.tar"
+        remote_exec $_remote_conn "tar -P -xf $_remote_backup_dir/cbcerts.tar"
         remote_exec $_remote_conn "yum -y install cb-enterprise"
     fi
 }
@@ -244,7 +245,6 @@ init_slave_node () {
     color_echo "-------- Copying config file for initialization"
     remote_copy $_master_conn "$_local_backup_dir/cbinit.conf" "$_remote_backup_dir" 0
     remote_copy $_master_conn "/etc/cb/cluster.conf" "$_local_backup_dir" 1
-    remote_exec $_slave_conn "tar -P -xf $_remote_backup_dir/cbcerts.tar"
 
     sed -i "s/$_slave_host\$/$_new_slave_host/g" $_local_backup_dir/cluster.conf
     sed -i "s/$OLD_IP/$_new_slave_host/g" $_local_backup_dir/cluster.conf

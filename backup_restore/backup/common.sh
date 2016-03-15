@@ -3,7 +3,7 @@
 usage="$(basename "$0") [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mk master key] [-ma 1] [-ss 1]
 
 where:
-    -r, --remote        Remote server IP address or Hostname. This server is used to restore the backup on.
+    -r, --remote        Remote server IP address or Hostname that should be backed up.
     -u, --user          User to connect to the remote server
     -b, --backup        Optional. Base path to store the backup in. If not provided the current folder is used
     -k, --key           Optional. Ssh key that to connect to the remote server. If not provided user will be prompted for the password
@@ -94,6 +94,13 @@ validate_input() {
     if [ $? != 0 ]
     then
         color_echo "Remote host is not resolvable" "1;31"
+        ERROR=1
+    fi
+
+    _resolved_ip=$( resolve_hostname $REMOTE_HOST )
+    if [[ "$_resolved_ip" =~ 127. ]] || [[ "$_resolved_ip" == "::1" ]]
+    then
+        color_echo "Loopback can't be used as the remote host. Please use a remote machine hostname or IP" "1;31"
         ERROR=1
     fi
 

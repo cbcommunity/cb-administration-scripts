@@ -1,11 +1,11 @@
 #! /bin/bash
 
 usage="$(basename "$0") [-h help] -r host -u user -b path [-k key] [-s save new host entry]
-
+WARNING: SOLR data folder should be backed up to avoid loss. If necessary restore process will remove data in cbevents folder on both master and minions
 where:
     -r, --remote        Ip address or the hostname of the remote server to restore the backup on
     -u, --user          User to use for remote server connection
-    -b, --backup        Folder path with backup for restore
+    -b, --backup        The exact path to .tar files obtained by previous backup
     -k, --key           Optional. ssh key that can be used to connect to the remote server
     -s, --save-hosts    Optional. Save new (ipaddress, hostname) entry to the hosts file on all nodes in the cluster including master
                         Only needed if previous setup did not have host entries for cluster nodes in the hosts file
@@ -90,6 +90,13 @@ validate_input() {
         ERROR=1
     fi
 
+    _resolved_ip=$( resolve_hostname $REMOTE_HOST )
+    if [[ "$_resolved_ip" =~ 127. ]] || [[ "$_resolved_ip" == "::1" ]]
+    then
+        color_echo "Loopback can't be used as the remote host. Please use a remote machine hostname or IP" "1;31"
+        ERROR=1
+    fi
+
     path_contains_backup $LOCAL_BACKUP_DIR
     if [ $? != 0 ]
     then
@@ -102,4 +109,8 @@ validate_input() {
         echo "$usage"
         exit 1
     fi
+
+    echo "WARNING: SOLR data folder should be backed up to avoid loss. Restore process may remove existing data in cbevents folder to match shard configuration"
+    echo "Press ENTER to continue..."
+    read
 }
