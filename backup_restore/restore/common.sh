@@ -4,6 +4,7 @@ usage="$(basename "$0") [-h help] -r host -u user -b path [-k key] [-s save new 
 WARNING: SOLR data folder should be backed up to avoid loss. If necessary restore process will remove data in cbevents folder on both master and minions
 where:
     -r, --remote        Ip address or the hostname of the remote server to restore the backup on
+    -na, --node-addr    Ip address or the hostname that will be used for Node Url (Server Node Url and Default Sensor Group Url in case of master restore)
     -u, --user          User to use for remote server connection
     -b, --backup        The exact path to .tar files obtained by previous backup
     -k, --key           Optional. ssh key that can be used to connect to the remote server
@@ -42,6 +43,10 @@ parse_input() {
         ;;
         -s|--save-hosts)
         SAVE_HOSTS=1
+        shift # past argument
+        ;;
+        -na|--restore-addr)
+        NODE_URL_HOST="$2"
         shift # past argument
         ;;
         --default)

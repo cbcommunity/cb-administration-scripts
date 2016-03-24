@@ -53,12 +53,12 @@ then
     # **************************** Installing CB Server if needed ************************************#
     # ************************************************************************************************#
     color_echo "-------- Checking if CB Server is installed"
-    if [ ! $( remote_exec $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
+    if [ ! $( remote_exec_get_output $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
     then
         install_master $remote_conn
     fi
 
-    if [ ! $( remote_exec $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
+    if [ ! $( remote_exec_get_output $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
     then
         exit_if_error 1 "-------- Something went wrong during CB Server installation"
     fi
@@ -102,7 +102,6 @@ then
     ret_val=$( read_cluster_config "Master" )
     OLD_HOST=$( get_tail_element "$ret_val" '|' 3 )
     NEW_HOST=$REMOTE_HOST
-
     # ************************************************************************************************#
     # **************************** Updating master with new master information ***********************#
     # ************************************************************************************************#
@@ -183,6 +182,7 @@ else
     slave_host=$( parse_slave_host_from_backup "$LOCAL_BACKUP_DIR" )
     ret_val=$( read_cluster_config "Slave*" "Host" $slave_host )
     slave_shards=$(get_tail_element "$ret_val" '|' 1)
+    slave_user=$(get_tail_element "$ret_val" '|' 2)
     slave_shards=$(sed -r 's/shards(=|\s)//g' <<< "$slave_shards")
     slave_name=$( get_tail_element "$ret_val" '|' 4 )
     slave_node_id=$( get_tail_element "$ret_val" '|' 5 )
@@ -225,26 +225,31 @@ else
         chmod 0400 $slave_ssh_key
     fi
 
-    if [ $(ssh -q -o "BatchMode yes" $REMOTE_USER@$REMOTE_HOST -i $slave_ssh_key "echo 1 && exit " || echo "0") == "0" ];
+    if [ $(ssh -q -o "BatchMode yes" $slave_user@$REMOTE_HOST -i $slave_ssh_key "echo 1 && exit " || echo "0") == "0" ];
     then
         color_echo "-------- SSH Key is not yet authorized on the remote machine. Copying the key"
         remote_copy $master_conn "/etc/cb/cb_ssh.pub" "$LOCAL_BACKUP_DIR/" 1
-        ssh-copy-id -i "$slave_ssh_key.pub" $REMOTE_USER@$REMOTE_HOST
+        ssh-copy-id -i "$slave_ssh_key.pub" $slave_user@$REMOTE_HOST
         exit_if_error $? "-------- Could not connect to the new server [\e[0m$REMOTE_HOST\e[1;31m]"
     fi
 
-    open_ssh_tunnel $REMOTE_USER $REMOTE_HOST $slave_ssh_key
+    open_ssh_tunnel $slave_user $REMOTE_HOST $slave_ssh_key
     exit_if_error $? "-------- Could not connect to the new server [\e[0m$REMOTE_HOST\e[1;31m]"
     remote_conn=$last_conn
-
     check_host_time $remote_conn
     exit_if_error $? "-------- Time on the remote server [\e[0m$REMOTE_HOST\e[1;31m] is not synced. Try to sync time first"
 
-    # ************************************************************************************************#
-    # **************************** Stopping the cluster **********************************************#
-    # ************************************************************************************************#
-    color_echo "-------- Stopping the cluster"
-    remote_exec $master_conn "/usr/share/cb/cbcluster stop"
+
+    if [ $( remote_exec_get_output $remote_conn "test -e /etc/cb/gunicorn.conf && echo 1 || echo 0" ) == 1 ]
+    then
+        # ************************************************************************************************#
+        # **************************** Stopping the cluster **********************************************#
+        # ************************************************************************************************#
+        color_echo "-------- Stopping the cluster"
+        remote_exec $master_conn "/usr/share/cb/cbcluster stop"
+    else
+        _new_install=1
+    fi
 
     # ************************************************************************************************#
     # **************************** Copying backup files to the remote machine ************************#
@@ -258,7 +263,7 @@ else
     # **************************** Installing new cb-enterprise if needed ****************************#
     # ************************************************************************************************#
     install_cb_enterprise $remote_conn "$REMOTE_RESTORE_DIR"
-    if [ ! $( remote_exec $remote_conn "test -e /etc/cb/gunicorn.conf && echo 1 || echo 0" ) == 1 ]
+    if [ ! $( remote_exec_get_output $remote_conn "test -e /etc/cb/gunicorn.conf && echo 1 || echo 0" ) == 1 ]
     then
         exit_if_error 1 "-------- Something went wrong during CB Server installation"
     fi
@@ -277,9 +282,9 @@ else
     generate_init_conf $master_conn $remote_conn "$LOCAL_BACKUP_DIR" "$REMOTE_RESTORE_DIR"
     init_slave_node $master_conn $remote_conn "$LOCAL_BACKUP_DIR" "$REMOTE_RESTORE_DIR" "$slave_host" "$REMOTE_HOST" $slave_node_id
 
-    if [ ! $( remote_exec $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
+    if [ ! $( remote_exec_get_output $remote_conn "test -e /etc/cb/cb.conf && echo 1 || echo 0" ) == 1 ]
     then
-        exit_if_error 1 "-------- Something went wrong during CB Server installation"
+        exit_if_error 1 "-------- Something went wrong during CB Server initialization"
     fi
 
     # ************************************************************************************************#
@@ -287,6 +292,15 @@ else
     # ************************************************************************************************#
     color_echo "-------- Restoring backup files on the remote slave"
     restore_slave_backup $remote_conn
+
+    if [[ $_new_install == 1 ]]
+    then
+        # ************************************************************************************************#
+        # **************************** Stopping the cluster **********************************************#
+        # ************************************************************************************************#
+        color_echo "-------- Stopping the cluster"
+        remote_exec $master_conn "/usr/share/cb/cbcluster stop"
+    fi
 
     # ************************************************************************************************#
     # **************************** Regenerating server token *****************************************#

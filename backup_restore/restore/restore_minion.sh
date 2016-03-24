@@ -17,70 +17,58 @@ update_all_slaves_with_new_slave () {
     # ********************************************************************************************#
     remote_copy $_master_conn "/var/cb/.erlang.cookie" "$_local_backup_dir" 1
 
-    _slave=0
-    _slave_host=
-    _slave_user=
-    IFS="="
-    while read -r name value
+    parse_all_slaves_from_config $_local_backup_dir
+
+    for _slave_node in "${_slave_nodes[@]}"
     do
-        if [[ "$name" =~ ^\[Slave* ]]; then
-            _slave=1
-            if [ ! -z "$_slave_name" ]
-            then
-                echo
-            fi
-            _slave_name=$name
-        fi
-        if [ $_slave == 1 ] && [ "$name" == "Host" ]; then
-            _slave_host=$value
-        fi
-        if [ $_slave == 1 ] && [ "$name" == "User" ]; then
-            _slave_user=$value
-        fi
-        if [ $_slave == 1 ] && [ ! -z "$_slave_host" ] && [ ! -z "$_slave_user"  ]; then
-            color_echo "--------------------------------------------------------------------------------------"
-            color_echo "Updating $_slave_name [\e[0m$_slave_host\e[1;32m]"
-            color_echo "--------------------------------------------------------------------------------------"
+        _slave_host=$( get_tail_element $_slave_node '|' 1 )
+        _slave_user=$( get_tail_element $_slave_node '|' 2 )
+        _slave_name=$( get_tail_element $_slave_node '|' 3 )
 
-            color_echo "-------- Connecting using the key"
-            open_ssh_tunnel $_slave_user $_slave_host $_slave_key
-            if [ $? == 0 ];
-            then
+        color_echo "--------------------------------------------------------------------------------------"
+        color_echo "Updating $_slave_name [\e[0m$_slave_host\e[1;32m]"
+        color_echo "--------------------------------------------------------------------------------------"
 
-                OLD_IP=$( resolve_hostname $_old_host )
-                NEW_IP=$( resolve_hostname $_new_host )
+        color_echo "-------- Connecting using the key"
+        open_ssh_tunnel $_slave_user $_slave_host $_slave_key
+        if [ $? == 0 ];
+        then
 
-                color_echo "-------- Updating hosts file"
-                update_host_file $_old_host $OLD_IP $_new_host $NEW_IP $last_conn $_save_hosts
+            OLD_IP=$( resolve_hostname $_old_host )
+            NEW_IP=$( resolve_hostname $_new_host )
 
-                color_echo "-------- Updating iptables"
-                remote_exec $last_conn "service iptables stop > /dev/null"
-                remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
-                remote_exec $last_conn "service iptables start > /dev/null"
+            color_echo "-------- Updating hosts file"
+            update_host_file $_old_host $OLD_IP $_new_host $NEW_IP $last_conn $_save_hosts
 
-                color_echo "-------- Stopping  cb-enterprise"
-                remote_exec $last_conn "service cb-enterprise stop > /dev/null"
+            color_echo "-------- Updating iptables"
+            remote_exec $last_conn "service iptables stop > /dev/null"
+            remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
+            remote_exec $last_conn "service iptables start > /dev/null"
+
+            color_echo "-------- Stopping  cb-enterprise"
+            remote_exec $last_conn "service cb-enterprise stop > /dev/null"
+            if [ "$_slave_user" == "root" ]; then
                 remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9 > /dev/null"
-
-                color_echo "-------- Copying cluster.conf and rabbitmq cookie"
-                remote_copy $last_conn "$_local_backup_dir/cluster.conf" "/etc/cb/" 0
-                remote_copy $last_conn "$_local_backup_dir/.erlang.cookie" "/var/cb/" 0
-
-                color_echo "-------- Removing RabbitMQ data folder"
-                remote_exec $last_conn "rm -rf $RabbitMQDataPath"
-
-                close_ssh_tunnel $last_conn
             else
-                color_echo "-------- Could not connect to the $_slave_name [\e[0m$_slave_host\e[1;33m]" "1;33"
-                color_echo "-------- Skipping"
+                _process_id=$( remote_exec_get_output $last_conn "ps aux | grep \"[r]abbit\" | grep erlang | grep cb | awk '{print \$2}'" )
+                if [ ! -z "$_process_id" ]; then
+                    remote_exec $last_conn "kill -9 $_process_id > /dev/null"
+                fi
             fi
-            unset _slave_user
-            unset _slave_host
-            _slave=0
-        fi
 
-    done < $_local_backup_dir/cluster.conf
-    unset IFS
+            color_echo "-------- Copying cluster.conf and rabbitmq cookie"
+            remote_copy $last_conn "$_local_backup_dir/cluster.conf" "/etc/cb/" 0
+            remote_copy $last_conn "$_local_backup_dir/.erlang.cookie" "/var/cb/" 0
+
+            color_echo "-------- Removing RabbitMQ data folder"
+            remote_exec $last_conn "rm -rf $RabbitMQDataPath"
+
+            close_ssh_tunnel $last_conn
+        else
+            color_echo "-------- Could not connect to the $_slave_name [\e[0m$_slave_host\e[1;33m]" "1;33"
+            color_echo "-------- Skipping"
+        fi
+    done
 }
 
 parse_slave_host_from_backup () {
@@ -104,7 +92,7 @@ parse_slave_host_from_backup () {
 install_cb_enterprise() {
     _remote_conn=$1
     _remote_backup_dir=$2
-    if [ ! $( remote_exec $_remote_conn "test -e /etc/cb/gunicorn.conf && echo 1 || echo 0" ) == 1 ]
+    if [ ! $( remote_exec_get_output $_remote_conn "test -e /etc/cb/gunicorn.conf && echo 1 || echo 0" ) == 1 ]
     then
         color_echo "-------- CB Server is NOT installed on the remote machine" "1;33"
         color_echo "-------- Installing CB server"
@@ -187,6 +175,13 @@ update_master_with_new_slave() {
     _slave_node_id=$4
     _new_slave_host=$5
 
+    if [ ! -z "$NODE_URL_HOST" ];
+    then
+        _new_slave_node=$NODE_URL_HOST
+    else
+        _new_slave_node=$_new_slave_host
+    fi
+
     rm -rf $_local_backup_dir/cbupdate.py
     cat <<EOF >> $_local_backup_dir/cbupdate.py
 from cb.utils.db import db_session_context
@@ -199,7 +194,7 @@ config.load('/etc/cb/cb.conf')
 
 with db_session_context(config) as db:
     node = db.query(ClusterNodeSensorAddress).get($_slave_node_id)
-    node.address="$_new_slave_host"
+    node.address="$_new_slave_node"
     db.commit()
 EOF
 
@@ -277,6 +272,10 @@ restore_slave_backup (){
     remote_exec $_remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrsyslogd.tar"
     # logrotate Configuration
     remote_exec $_remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cblogrotate.tar"
-    # Optional: SSH Authorization Keys - Needed if you have used trusted keys between systems in a clustered environment
-    remote_exec $_remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrootauthkeys.tar"
+
+    if [ $( remote_exec $_remote_conn "test -e $REMOTE_RESTORE_DIR/cbrootauthkeys.tar && echo 1 || echo 0" ) == 1 ]
+    then
+       # Optional: SSH Authorization Keys - Needed if you have used trusted keys between systems in a clustered environment
+        remote_exec $_remote_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrootauthkeys.tar"
+    fi
 }

@@ -81,9 +81,9 @@ extract_backup (){
     color_echo "-------- Extracting /usr/share/cb/coreservices/installers/"
     remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbinstallers.tar"
 
-    if [ $( remote_exec $_conn "test -e $REMOTE_RESTORE_DIR/cbrootauthkeys.tar && echo 1 || echo 0" ) == 1 ]
+    if [ $( remote_exec_get_output $_conn "test -e $REMOTE_RESTORE_DIR/cbrootauthkeys.tar && echo 1 || echo 0" ) == 1 ]
     then
-        color_echo "-------- Extracting /root/.ssh/authorized_keys"
+        color_echo "-------- Extracting /user/.ssh/authorized_keys"
         remote_exec $_conn "tar -P -xf $REMOTE_RESTORE_DIR/cbrootauthkeys.tar"
     fi
 
@@ -146,77 +146,75 @@ update_all_slaves_with_new_master () {
     OLD_IP=$( resolve_hostname $old_master )
     NEW_IP=$( resolve_hostname $new_master )
 
-    slave=0
-    slave_host=
-    slave_user=
-    IFS="="
-    while read -r name value
+    parse_all_slaves_from_config $LOCAL_BACKUP_DIR
+
+    for _slave_node in "${_slave_nodes[@]}"
     do
-        if [[ $name =~ ^\[Slave* ]]; then
-            slave=1
-            if [ ! -z "$_slave_name" ]
-            then
-                echo
-            fi
-            _slave_name=$name
+        slave_host=$( get_tail_element $_slave_node '|' 1 )
+        slave_user=$( get_tail_element $_slave_node '|' 2 )
+        _slave_name=$( get_tail_element $_slave_node '|' 3 )
 
-        fi
-        if [ $slave == 1 ] && [ "$name" == "Host" ]; then
-            slave_host=$value
-        fi
-        if [ $slave == 1 ] && [ "$name" == "User" ]; then
-            slave_user=$value
-        fi
-        if [ $slave == 1 ] && [ ! -z "$slave_host" ] && [ ! -z "$slave_user"  ]; then
-            color_echo "--------------------------------------------------------------------------------------"
-            color_echo "Updating $_slave_name [\e[0m$slave_host\e[1;32m]"
-            color_echo "--------------------------------------------------------------------------------------"
+        color_echo "--------------------------------------------------------------------------------------"
+        color_echo "Updating $_slave_name [\e[0m$slave_host\e[1;32m]"
+        color_echo "--------------------------------------------------------------------------------------"
 
 
-            open_ssh_tunnel $slave_user $slave_host $slave_key
-            if [ $? == 0 ];
-            then
-                remote_exec $last_conn "service cb-enterprise stop > /dev/null"
+        open_ssh_tunnel $slave_user $slave_host $slave_key
+        if [ $? == 0 ];
+        then
+            remote_exec $last_conn "service cb-enterprise stop > /dev/null"
+            if [ "$_slave_user" == "root" ]; then
                 remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9"
-
-                color_echo "-------- Updating cb.conf"
-                remote_exec $last_conn "sed -r -i 's/RedisHost=.*/RedisHost=$new_master/g' /etc/cb/cb.conf"
-                remote_exec $last_conn "sed -r -i 's/DatabaseURL\=(.*\@).*(:.*)/DatabaseURL=\1$new_master\2/g' /etc/cb/cb.conf"
-                remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/cb/cb.conf"
-
-                color_echo "-------- Copying cluster.conf"
-                remote_copy $last_conn "$LOCAL_BACKUP_DIR/cluster.conf" "/etc/cb/" 0
-
-                color_echo "-------- Updating iptables"
-                remote_exec $last_conn "service iptables stop > /dev/null"
-                remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
-                remote_exec $last_conn "service iptables start"
-
-                color_echo "-------- Updating hosts file"
-                update_host_file $old_master $OLD_IP $new_master $NEW_IP $last_conn $SAVE_HOSTS
-
-                color_echo "-------- Removing rabbitmq data path"
-                remote_exec $last_conn "rm -rf $RabbitMQDataPath"
-
-                color_echo "-------- Copying rabbitmq cookie"
-                remote_copy $last_conn "$LOCAL_BACKUP_DIR/.erlang.cookie" "/var/cb/" 0
-
-                close_ssh_tunnel $last_conn
             else
-                color_echo "-------- Could not connect to the $slave_host minion ------" "1;33"
-                color_echo "-------- Skipping"
+                _process_id=$( remote_exec_get_output $last_conn "ps aux | grep \"[r]abbit\" | grep erlang | grep cb | awk '{print \$2}'" )
+                if [ ! -z "$_process_id" ]; then
+                    remote_exec $last_conn "kill -9 $_process_id > /dev/null"
+                fi
             fi
-            unset slave_user
-            unset slave_host
-            _slave=0
+
+            remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9"
+
+            color_echo "-------- Updating cb.conf"
+            remote_exec $last_conn "sed -r -i 's/RedisHost=.*/RedisHost=$new_master/g' /etc/cb/cb.conf"
+            remote_exec $last_conn "sed -r -i 's/DatabaseURL\=(.*\@).*(:.*)/DatabaseURL=\1$new_master\2/g' /etc/cb/cb.conf"
+            remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/cb/cb.conf"
+
+            color_echo "-------- Copying cluster.conf"
+            remote_copy $last_conn "$LOCAL_BACKUP_DIR/cluster.conf" "/etc/cb/" 0
+
+            color_echo "-------- Updating iptables"
+            remote_exec $last_conn "service iptables stop > /dev/null"
+            remote_exec $last_conn "sed -i 's/$OLD_IP/$NEW_IP/g' /etc/sysconfig/iptables"
+            remote_exec $last_conn "service iptables start"
+
+            color_echo "-------- Updating hosts file"
+            update_host_file $old_master $OLD_IP $new_master $NEW_IP $last_conn $SAVE_HOSTS
+
+            color_echo "-------- Removing rabbitmq data path"
+            remote_exec $last_conn "rm -rf $RabbitMQDataPath"
+
+            color_echo "-------- Copying rabbitmq cookie"
+            remote_copy $last_conn "$LOCAL_BACKUP_DIR/.erlang.cookie" "/var/cb/" 0
+
+            close_ssh_tunnel $last_conn
+        else
+            color_echo "-------- Could not connect to the $slave_host minion ------" "1;33"
+            color_echo "-------- Skipping"
         fi
-    done < $LOCAL_BACKUP_DIR/cluster.conf
+    done
 }
 
 udpate_remote_server () {
     _conn=$1
     old_master=$2
     new_master=$3
+
+    if [ ! -z "$NODE_URL_HOST" ];
+    then
+        new_master_node=$NODE_URL_HOST
+    else
+        new_master_node=$new_master
+    fi
 
     rm -rf $LOCAL_BACKUP_DIR/cbupdate.py
     cat <<EOF >> $LOCAL_BACKUP_DIR/cbupdate.py
@@ -230,9 +228,9 @@ config.load('/etc/cb/cb.conf')
 
 with db_session_context(config) as db:
     node = db.query(ClusterNodeSensorAddress).get(0)
-    node.address="$new_master"
+    node.address="$new_master_node"
     sg = db.query(SensorGroup).get(1)
-    sg.sensorbackend_server=re.sub("$old_master", "$new_master", sg.sensorbackend_server)
+    sg.sensorbackend_server=re.sub("$old_master", "$new_master_node", sg.sensorbackend_server)
     db.commit()
 EOF
     remote_copy $_conn "$LOCAL_BACKUP_DIR/cbupdate.py" "$REMOTE_RESTORE_DIR" 0

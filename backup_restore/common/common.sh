@@ -45,7 +45,7 @@ is_host_resolvable(){
 
 check_host_time(){
     _conn=$1
-    remote_time=$( remote_exec $_conn "date +%s" )
+    remote_time=$( remote_exec_get_output $_conn "date +%s" )
     local_time=$(date +%s)
     difference=$(( $local_time - $remote_time ))
     difference=${difference#-}
@@ -115,11 +115,20 @@ open_ssh_tunnel() {
 
     get_next_conn $user $host
 
-    if [ ! -z "$key" ];
-    then
-        ssh -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnNT -L $PORT:$host:22 $user@$host -i $key
+    if [ "$user" != "root" ]; then
+        if [ ! -z "$key" ];
+        then
+            ssh -t -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnN -L $PORT:$host:22 $user@$host -i $key < /dev/tty
+        else
+            ssh -t -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnN -L $PORT:$host:22 $user@$host < /dev/tty
+        fi
     else
-        ssh -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnNT -L $PORT:$host:22 $user@$host
+        if [ ! -z "$key" ];
+        then
+            ssh -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnN -L $PORT:$host:22 $user@$host -i $key
+        else
+            ssh -o ControlPath=$last_conn -o ConnectTimeout=2 -M -fnN -L $PORT:$host:22 $user@$host
+        fi
     fi
     return $?
 }
@@ -129,7 +138,7 @@ close_ssh_tunnel() {
     user=$( get_tail_element $path '_' 3 )
     host=$( get_tail_element $path '_' 2 )
     cleanup_remote_tmp_folder $path $host
-    ssh -q -o ControlPath=$path -O exit $user@$host
+    ssh -o ControlPath=$path -O exit $user@$host
 }
 
 remote_exec() {
@@ -138,11 +147,41 @@ remote_exec() {
     keep_input=$3
     user=$( get_tail_element $path '_' 3 )
     host=$( get_tail_element $path '_' 2 )
-    if [ ! -z "$keep_input" ]; then
-       ssh -o ControlPath=$path $user@$host "$remote_command"
+
+    if [ "$user" != "root" ]; then
+        ssh -t -q -o ControlPath=$path $user@$host "sudo -n $remote_command" < /dev/tty
     else
-       ssh -o ControlPath=$path $user@$host "$remote_command" < /dev/null
+        if [ ! -z "$keep_input" ]; then
+           ssh -o ControlPath=$path $user@$host "$remote_command"
+        else
+           ssh -o ControlPath=$path $user@$host "$remote_command" < /dev/null
+        fi
     fi
+}
+
+remote_exec_get_output() {
+    path=$1
+    remote_command=$2
+    user=$( get_tail_element $path '_' 3 )
+    host=$( get_tail_element $path '_' 2 )
+
+    if [ "$use_output" == "1" ];
+    then
+        _ret_value=$(ssh -t -q -o ControlPath=$path $user@$host "sudo -n $remote_command" < /dev/tty)
+
+        if [ ! -z "$_ret_value" ]; then
+            i=$((${#_ret_value}-1))
+            echo ${_ret_value:0:$i}
+        fi
+    else
+        ssh -o ControlPath=$path $user@$host "$remote_command" < /dev/null
+    fi
+}
+
+remote_exec_keep_input() {
+    path=$1
+    remote_command=$2
+    remote_exec $1 $2 1
 }
 
 remote_copy() {
@@ -154,6 +193,37 @@ remote_copy() {
     user=$( get_tail_element $path '_' 3 )
     host=$( get_tail_element $path '_' 2 )
 
+    if [ "$user" != "root" ]; then
+        if [ $from_remote == 1 ]
+        then
+            remote_exec $path "rm -rf /tmp/FILETRANSFER/$DATE"
+            remote_exec $path "mkdir -p /tmp/FILETRANSFER/$DATE"
+            remote_exec $path "cp $args $from_path /tmp/FILETRANSFER/$DATE"
+            remote_exec $path "chown -R $user /tmp/FILETRANSFER/$DATE"
+
+            if [ ! -z "$args" ]
+            then
+                scp -o ControlPath=$path $args $user@$host:/tmp/FILETRANSFER/$DATE/* $to_path
+            else
+                _file_name=$( get_tail_element $from_path '/' 1 )
+                scp -o ControlPath=$path $user@$host:/tmp/FILETRANSFER/$DATE/$_file_name $to_path
+            fi
+        else
+            remote_exec $path "rm -rf /tmp/FILETRANSFER/$DATE"
+            remote_exec $path "mkdir -p /tmp/FILETRANSFER/$DATE"
+            remote_exec $path "chown -R $user /tmp/FILETRANSFER/$DATE"
+            scp -o ControlPath=$path $args $from_path $user@$host:/tmp/FILETRANSFER/$DATE
+            if [ ! -z "$args" ]
+            then
+                remote_exec $path "cp $args /tmp/FILETRANSFER/$DATE/* $to_path"
+            else
+                _file_name=$( get_tail_element $from_path '/' 1 )
+                remote_exec $path "cp /tmp/FILETRANSFER/$DATE/$_file_name $to_path"
+            fi
+        fi
+        return $?
+    fi
+
     if [ $from_remote == 1 ]
     then
         scp -o ControlPath=$path $args $user@$host:$from_path $to_path
@@ -161,6 +231,40 @@ remote_copy() {
         scp -o ControlPath=$path $args $from_path $user@$host:$to_path
     fi
     return $?
+}
+
+parse_all_slaves_from_config () {
+    _config_dir=$1
+    _slave=0
+    _slave_host=
+    _slave_user=
+    IFS="="
+    _slave_nodes=()
+    while read -r name value
+    do
+        if [[ "$name" =~ ^\[Slave* ]]; then
+            _slave=1
+            if [ ! -z "$_slave_name" ]
+            then
+                echo
+            fi
+            _slave_name=$name
+        fi
+        if [ $_slave == 1 ] && [ "$name" == "Host" ]; then
+            _slave_host=$value
+        fi
+        if [ $_slave == 1 ] && [ "$name" == "User" ]; then
+            _slave_user=$value
+        fi
+        if [ $_slave == 1 ] && [ ! -z "$_slave_host" ] && [ ! -z "$_slave_user"  ]; then
+            _slave_nodes+=("$_slave_name|$_slave_user|$_slave_host")
+            unset _slave_user
+            unset _slave_host
+            _slave=0
+        fi
+
+    done < $_config_dir/cluster.conf
+    unset IFS
 }
 
 color_echo () {
@@ -260,7 +364,7 @@ update_host_file () {
     # If neither old nor new hostname is in the hosts file we will not change hosts file, unless SAVE_HOSTS=1
 
     host_match_regex="^.*[[:space:]]*$_new_host[[:space:]]*.*$"
-    _match=$(remote_exec $_ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'" )
+    _match=$(remote_exec_get_output $_ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'")
     if [  "$_match" == "1" ];
     then
         color_echo "-------- \"$_new_host\" host entry is found in the hosts file"
@@ -274,7 +378,7 @@ update_host_file () {
 
     host_match_regex="^.*[[:space:]]*$_old_host[[:space:]]*.*$"
 
-    _match=$(remote_exec $_ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'" )
+    _match=$(remote_exec_get_output $_ssh_conn "grep -q '$host_match_regex' /etc/hosts && echo '1' || echo '0'")
     if [ "$_old_host" != "$_old_ip" ] && [ "$_match" == "1" ];
     then
         color_echo "-------- $_new_host host entry is not found in the hosts file, but the old one is."
@@ -321,12 +425,13 @@ cleanup_remote_tmp_folder(){
     _conn=$1
     _host=$2
 
-    if [ "$(remote_exec $_conn '[ -d $REMOTE_RESTORE_DIR ] && echo 0 || echo 1')" == "0" ]
+    if [[ $( remote_exec_get_output $_conn "test -d $REMOTE_RESTORE_DIR && echo 0 || echo 1" ) == 0 ]]
     then
         _dir_to_clean=$REMOTE_RESTORE_DIR
         remote_remote_tmp_folder $_conn $_host $_dir_to_clean
     fi
-    if [ "$(remote_exec $_conn '[ -d $REMOTE_BACKUP_DIR ] && echo 0 || echo 1')" == "0" ]
+
+    if [[ $( remote_exec_get_output $_conn "test -d $REMOTE_BACKUP_DIR && echo 0 || echo 1" ) == 0 ]]
     then
         _dir_to_clean=$REMOTE_BACKUP_DIR
         remote_remote_tmp_folder $_conn $_host $_dir_to_clean

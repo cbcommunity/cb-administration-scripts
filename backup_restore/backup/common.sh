@@ -171,7 +171,7 @@ backup_node () {
     _conn=$1
     _node_type=$2
     _local_backup_dir=$3
-
+    _user=$4
     color_echo "-------- Archiving all necessary information"
 
     remote_exec $_conn "mkdir -p $REMOTE_BACKUP_DIR"
@@ -198,8 +198,16 @@ backup_node () {
 
     if [ "$_node_type" == "Slave" ];
     then
-       # Optional: SSH Authorization Keys - Needed if you have used trusted keys between systems in a clustered environment
-       remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbrootauthkeys.tar /root/.ssh/authorized_keys"
+       _ssh_path="/root/.ssh/authorized_keys"
+       if [ "$_user" != "root" ]
+       then
+           _ssh_path="/home/$_user/.ssh/authorized_keys"
+       fi
+
+       if [ $( remote_exec_get_output $remote_conn "test -e $_ssh_path && echo 1 || echo 0" ) == 1 ]
+       then
+           remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbrootauthkeys.tar $_ssh_path"
+       fi
     else
         # Perform the following steps only on a Master CB Server
         # Start Postgres Database
