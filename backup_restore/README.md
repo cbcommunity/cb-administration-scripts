@@ -102,6 +102,8 @@ bash restore.sh [-h help] -r host -u user -b path [-k key] [-s 1]
 
 where:
     -r, --remote        Ip address or the hostname of the remote server to restore the backup on
+    -na, --node-addr    Ip address or the hostname that will be used for Node Url (Server Node Url and Default Sensor Group Url in case of master restore)
+                        Not validated, must be correct IP Address or Hostname that is resolvable on the target machine
     -u, --user          Remote user to connect with
     -b, --backup        Folder where the backup is
     -k, --key           Optional. ssh key that can be used to connect to the remote server

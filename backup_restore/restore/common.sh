@@ -5,6 +5,7 @@ WARNING: SOLR data folder should be backed up to avoid loss. If necessary restor
 where:
     -r, --remote        Ip address or the hostname of the remote server to restore the backup on
     -na, --node-addr    Ip address or the hostname that will be used for Node Url (Server Node Url and Default Sensor Group Url in case of master restore)
+                        Not validated, must be correct IP Address or Hostname that is resolvable on the target machine
     -u, --user          User to use for remote server connection
     -b, --backup        The exact path to .tar files obtained by previous backup
     -k, --key           Optional. ssh key that can be used to connect to the remote server
