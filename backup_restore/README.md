@@ -11,7 +11,7 @@ bash backup.sh [-h help] -r host -u user [-b path] [-k key] [-m master host] [-m
 where:
     -r, --remote        Remote server IP address or Hostname. This server is used to restore the backup on.
     -u, --user          User to connect to the remote server
-                        If non user is used to control the cluster or connect to the remote machine this user has to be added to the sudoers file.
+                        If non root user is used to control the cluster or connect to the remote machine this user has to be added to the sudoers file.
                         See the Non-root section below
     -b, --backup        Optional. Base path to store the backup in. If not provided the current folder is used
     -k, --key           Optional. Ssh key that to connect to the remote server. If not provided user will be prompted for the password
@@ -107,7 +107,7 @@ where:
     -na, --node-addr    Ip address or the hostname that will be used for Node Url (Server Node Url and Default Sensor Group Url in case of master restore)
                         Not validated, must be correct IP Address or Hostname that is resolvable on the target machine
     -u, --user          Remote user to connect with.
-                        If non user is used to control the cluster or connect to the remote machine this user has to be added to the sudoers file.
+                        If non root user is used to control the cluster or connect to the remote machine this user has to be added to the sudoers file.
                         See the Non-root section below
     -b, --backup        Folder where the backup is
     -k, --key           Optional. ssh key that can be used to connect to the remote server
