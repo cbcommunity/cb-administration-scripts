@@ -70,13 +70,20 @@ then
     # ************************************************************************************************#
     # **************************** Stopping CB server if needed **************************************#
     # ************************************************************************************************#
+    color_echo "-------- Stopping CB Server on the remote machine"
     command=/usr/share/cb/cbcluster
     if [ $ClusterMembership == "Standalone" ]
     then
         command="service cb-enterprise"
+        remote_exec $remote_conn "$command stop"
+    else
+        # ************************ extracting ssh key for accessing slaves ***************************#
+        slave_ssh_key="$LOCAL_BACKUP_DIR/cb_ssh"
+        tar xf $LOCAL_BACKUP_DIR/cbconfig.tar -P -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
+        chmod 0400 $slave_ssh_key
+        # ********************************************************************************************#
+        stop_the_cluster_or_all_nodes $remote_conn $LOCAL_BACKUP_DIR $slave_ssh_key
     fi
-    color_echo "-------- Stopping CB Server on the remote machine"
-    remote_exec $remote_conn "$command stop"
 
     # ************************************************************************************************#
     # **************************** Stopping iptables *************************************************#
@@ -142,12 +149,6 @@ then
         # **************************** Copying cluster.conf ******************************************#
         # ********************************************************************************************#
         remote_copy $remote_conn "/etc/cb/cluster.conf" "$LOCAL_BACKUP_DIR/" 1
-
-        # ************************ extracting ssh key for accessing slaves ***************************#
-        slave_ssh_key="$LOCAL_BACKUP_DIR/cb_ssh"
-        tar xf $LOCAL_BACKUP_DIR/cbconfig.tar -P -C $LOCAL_BACKUP_DIR/ /etc/cb/cb_ssh --strip-components 2
-        chmod 0400 $slave_ssh_key
-        # ********************************************************************************************#
 
         update_all_slaves_with_new_master $OLD_HOST $NEW_HOST $slave_ssh_key
         color_echo "--------------------------------------------------------------------------------------"
@@ -246,7 +247,7 @@ else
         # **************************** Stopping the cluster **********************************************#
         # ************************************************************************************************#
         color_echo "-------- Stopping the cluster"
-        remote_exec $master_conn "/usr/share/cb/cbcluster stop"
+        stop_the_cluster_or_all_nodes $master_conn $LOCAL_BACKUP_DIR $slave_ssh_key
     else
         _new_install=1
     fi

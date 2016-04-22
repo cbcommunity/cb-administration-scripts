@@ -157,6 +157,61 @@ remote_exec() {
            ssh -o ControlPath=$path $user@$host "$remote_command" < /dev/null
         fi
     fi
+    return $?
+}
+
+stop_the_cluster_or_all_nodes() {
+    _master_conn=$1
+    _local_backup_dir=$2
+    _slave_key=$3
+    remote_exec $_master_conn "/usr/share/cb/cbcluster stop"
+
+    if [ $? != 0 ];
+    then
+        color_echo "--------------------------------------------------------------------------------------"
+        color_echo "-------- [\e[0m/usr/share/cb/cbcluster stop\e[1;33m] failed. Stopping all nodes one by one" "1;33"
+        color_echo "--------------------------------------------------------------------------------------"
+        color_echo "Stopping MASTER"
+        color_echo "--------------------------------------------------------------------------------------"
+        color_echo "-------- Stopping  cb-enterprise"
+        remote_exec $_master_conn "service cb-enterprise stop > /dev/null"
+
+        parse_all_slaves_from_config $_local_backup_dir
+
+        for _slave_node in "${_slave_nodes[@]}"
+        do
+            _slave_host=$( get_tail_element $_slave_node '|' 1 )
+            _slave_user=$( get_tail_element $_slave_node '|' 2 )
+            _slave_name=$( get_tail_element $_slave_node '|' 3 )
+
+            color_echo "--------------------------------------------------------------------------------------"
+            color_echo "Stopping $_slave_name [\e[0m$_slave_host\e[1;32m]"
+            color_echo "--------------------------------------------------------------------------------------"
+
+            color_echo "-------- Connecting using the key"
+            open_ssh_tunnel $_slave_user $_slave_host $_slave_key
+            if [ $? == 0 ];
+            then
+
+                color_echo "-------- Stopping  cb-enterprise"
+                remote_exec $last_conn "service cb-enterprise stop > /dev/null"
+                if [ "$_slave_user" == "root" ]; then
+                    remote_exec $last_conn "ps aux | grep rabbit | grep erlang | grep cb | awk '{print \$2}' | xargs kill -9 > /dev/null"
+                else
+                    _process_id=$( remote_exec_get_output $last_conn "ps aux | grep \"[r]abbit\" | grep erlang | grep cb | awk '{print \$2}'" )
+                    if [ ! -z "$_process_id" ]; then
+                        remote_exec $last_conn "kill -9 $_process_id > /dev/null"
+                    fi
+                fi
+
+                close_ssh_tunnel $last_conn
+            else
+                color_echo "-------- Could not connect to the $_slave_name [\e[0m$_slave_host\e[1;33m]" "1;33"
+                color_echo "-------- Skipping"
+            fi
+        done
+    fi
+
 }
 
 remote_exec_get_output() {
