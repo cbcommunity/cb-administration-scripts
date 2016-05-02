@@ -1,1 +1,1 @@
-# cb-administration-scrtipts
+# cb-administration-scripts
