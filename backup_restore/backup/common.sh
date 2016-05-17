@@ -178,19 +178,19 @@ backup_node () {
     # Host file
     remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbhosts.tar /etc/hosts"
     # Yum files
-    remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbyum.tar /etc/yum.repos.d/"
+    remote_exec $_conn "tar --exclude='cbdiag*.zip' -P --selinux -cf $REMOTE_BACKUP_DIR/cbyum.tar /etc/yum.repos.d/"
     # Certs files
-    remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbcerts.tar /etc/cb/certs/"
+    remote_exec $_conn "tar --exclude='cbdiag*.zip' -P --selinux -cf $REMOTE_BACKUP_DIR/cbcerts.tar /etc/cb/certs/"
     # IP Tables file
     remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbiptables.tar /etc/sysconfig/iptables"
     # SSH Configuration and Keys
-    remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbssh.tar /etc/ssh/"
+    remote_exec $_conn "tar --exclude='cbdiag*.zip' -P --selinux -cf $REMOTE_BACKUP_DIR/cbssh.tar /etc/ssh/"
     # Carbon Black configuration
-    remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbconfig.tar /etc/cb/"
+    remote_exec $_conn "tar --exclude='cbdiag*.zip' -P --selinux -cf $REMOTE_BACKUP_DIR/cbconfig.tar /etc/cb/"
     # Rsyslog Configuration
     remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbrsyslog.tar /etc/rsyslog.conf"
     # Rsyslog.d configuration
-    remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cbrsyslogd.tar /etc/rsyslog.d/"
+    remote_exec $_conn "tar --exclude='cbdiag*.zip' -P --selinux -cf $REMOTE_BACKUP_DIR/cbrsyslogd.tar /etc/rsyslog.d/"
     # logrotate configuration
     remote_exec $_conn "tar -P --selinux -cf $REMOTE_BACKUP_DIR/cblogrotate.tar /etc/logrotate.d/cb"
     # Rabbitmq cookie
@@ -226,7 +226,7 @@ backup_node () {
         --exclude-table-data=investigations \
         --exclude-table-data=maintenance_job_history \
         --exclude-table-data=moduleinfo_events \
-        --exclude-table-data=mutex_watchlist_searcher \
+        --exclude-table=mutex_watchlist_searcher \
         --exclude-table-data=sensor_activity \
         --exclude-table-data=sensor_comm_failures \
         --exclude-table-data=sensor_driver_diagnostics \
