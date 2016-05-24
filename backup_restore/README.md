@@ -117,7 +117,7 @@ where:
 
 ###Examples:
 #####`Master` restore
-`bash restore.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups/YYYY-MM-DD-HH-mm-ss`
+`bash restore.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups/YYYY-MM-DD-HH-mm-ss/<HOSTNAME>`
 
 This command will:
 - ssh into the `master` using the key
@@ -140,7 +140,7 @@ This command will:
 - Start the cluster back
 
 #####`Slave` restore
-`bash restore.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups/YYYY-MM-DD-HH-mm-ss`
+`bash restore.sh -r 10.X.Y.Z -u root -k master_key -b ./all_backups/YYYY-MM-DD-HH-mm-ss/<HOSTNAME>`
 
 This command will:
 - get `master's` info from the backup
