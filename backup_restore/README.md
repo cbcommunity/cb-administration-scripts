@@ -100,7 +100,7 @@ This command will:
 The script is meant to run on a standalone box
 
 ```
-bash restore.sh [-h help] -r host -u user -b path [-k key] [-s 1]
+bash restore.sh [-h help] -r host -u user -b path [-k key] [-s 1] [-na host]
 
 where:
     -r, --remote        Ip address or the hostname of the remote server to restore the backup on
