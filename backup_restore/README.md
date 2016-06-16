@@ -104,8 +104,6 @@ bash restore.sh [-h help] -r host -u user -b path [-k key] [-s 1]
 
 where:
     -r, --remote        Ip address or the hostname of the remote server to restore the backup on
-    -na, --node-addr    Ip address or the hostname that will be used for Node Url (Server Node Url and Default Sensor Group Url in case of master restore)
-                        Not validated, must be correct IP Address or Hostname that is resolvable on the target machine
     -u, --user          Remote user to connect with.
                         If non root user is used to control the cluster or connect to the remote machine this user has to be added to the sudoers file.
                         See the Non-root section below
@@ -113,6 +111,9 @@ where:
     -k, --key           Optional. ssh key that can be used to connect to the remote server
     -s, --save-hosts    Optional. Save new (ipaddress, hostname) entry to the hosts file on all nodes in the cluster including master
                         Only needed if previous setup did not have host entries for cluster nodes in the hosts file
+    -na, --node-addr    Optional. Ip address or the hostname that will be used for Node Url (Server Node Url and Default Sensor Group Url in case of master restore)
+                        Not validated, must be correct IP Address or Hostname that is resolvable on the target machine
+    
 ```
 
 ###Examples:
