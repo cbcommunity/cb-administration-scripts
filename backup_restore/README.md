@@ -9,7 +9,7 @@ The script is meant to run on a standalone box.
 bash backup.sh [-h help] -r host -u user [-b path] [-k key] [-m master host] [-mu master user] [-mk master key] [-ma backup all slaves] [-ss 1]
 
 where:
-    -r, --remote        Remote server IP address or Hostname. This server is used to restore the backup on.
+    -r, --remote        Remote server IP address or Hostname that should be backed up.
     -u, --user          User to connect to the remote server
                         If non root user is used to control the cluster or connect to the remote machine this user has to be added to the sudoers file.
                         See the Non-root section below
