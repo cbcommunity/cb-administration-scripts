@@ -1,0 +1,194 @@
+import ConfigParser
+import sys
+import os
+import subprocess
+import optparse
+import requests
+import urlparse
+import tempfile
+import shutil
+import json
+try:
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+except:
+    pass
+def load(input_file, section=None):
+    dict={}
+    section = section or 'Config'
+    parser = ConfigParser.RawConfigParser()
+    parser.optionxform = str
+    parser.read(input_file)
+    for prop, val in parser.items(section):
+        dict[prop]=val
+    return dict
+def enable_feed_action(cb_server_url, api_token, config, ssl_verify=True ):
+
+    feeds = requests.get(urlparse.urljoin(cb_server_url, '/api/v1/feed'),
+                         headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+    feeds.raise_for_status()
+    for f in feeds.json():
+        fn=f['name']
+        fid=f['id']
+        if f['enabled'] == False:
+            f['enabled']=True
+            data = json.dumps(f)
+            requests.put(urlparse.urljoin(cb_server_url, '/api/v1/feed/{0}'.format(fid)),
+                          data=data, headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+        if config.has_key(fn):
+            f_actions = requests.get(urlparse.urljoin(cb_server_url, '/api/v1/feed/{0}/action'.format(fid)),
+                                     headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+            c_action = config[fn].split(",")
+            for c in c_action:
+                if int(c) == 1 or int(c) == 3:
+                    found=False
+                    if f_actions.status_code == 200:
+                        for f in f_actions.json():
+                            if int(c) == int(f['action_type']):
+                                found=True
+                    if found == False:
+                        print "Applying Feed Configuration for %s with %s" % (fn, c)
+                        data = json.dumps({'action_type': int(c), 'watchlist_id': None, 'action_data':'{"email_recipients":[1]}', 'group_id':int(fid)})
+                        requests.post(urlparse.urljoin(cb_server_url, '/api/v1/feed/{0}/action'.format(fid)),
+                                      data=data, headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+
+def configure_groups(cb_server_url, api_token, config , ssl_verify=True):
+
+    groups = requests.get(urlparse.urljoin(cb_server_url, '/api/group'),
+                         headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+    groups.raise_for_status()
+    for g in groups.json():
+        update=False
+        if int(config['banning']) == 1 and g['banning_enabled'] == False:
+            g['banning_enabled']=True
+            update=True
+        if int(config['tamper']) == 1 and int(g['tamper_level']) == 0:
+            g['tamper_level']=1
+            update=True
+        if update == True:
+            print "Updating Tamper and/or Banniing on Group %s" % (g['name'])
+            data = json.dumps(g)
+            requests.put(urlparse.urljoin(cb_server_url, '/api/group/{0}'.format(g['id'])),
+                          data=data, headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+
+def enable_data_sharing(cb_server_url, api_token, config ,ssl_verify=True):
+
+    groups = requests.get(urlparse.urljoin(cb_server_url, '/api/group'),
+                         headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+    groups.raise_for_status()
+    for g in groups.json():
+        g_actions = requests.get(urlparse.urljoin(cb_server_url, '/api/v1/group/{0}/datasharing'.format(g['id'])),
+                                 headers={'X-Auth-Token': api_token}, verify=ssl_verify).json()
+        if int(config['ticevent']) == 1:
+            for a in g_actions:
+                found=False
+                if "TICEVT" == a['what']:
+                    found=True
+            if found == False:
+                print "Applying Event Sharing on Group %s" % (g['name'])
+                data = json.dumps({'group_id': int(g['id']), 'what': "TICEVT", 'who': "BIT9"})
+                requests.post(urlparse.urljoin(cb_server_url, '/api/v1/group/{0}/datasharing'.format(g['id'])),
+                                      data=data, headers={'X-Auth-Token': api_token}, verify=ssl_verify)
+
+def change_config_setting(setting, value, config):
+    found = False
+    update = False
+    fh, abs_path = tempfile.mkstemp()
+    with open(abs_path, 'w') as new_file:
+        with open(config, 'r') as old_file:
+            for line in old_file:
+                if line.lstrip().startswith('{0}='.format(setting)) or line.lstrip().startswith('#{0}='.format(setting)):
+                    found = True
+                    if str(value).strip() != str(line.strip().split("=")[1]) or line.lstrip().startswith('#{0}='.format(setting)):
+                        print 'Changing %s setting [setting=%s][value=%s]' % (config, setting, str(value))
+                        new_file.write('{0}={1}\n'.format(setting, value.strip()))
+                        update=True
+                    else:
+                       new_file.write(line) 
+                else:
+                    new_file.write(line)
+            if not found:
+                update=True
+                new_file.seek(0, 2)
+                new_file.write('\n{0}={1}\n'.format(setting, value))
+    os.close(fh)
+    if update==False:
+        os.remove(abs_path)
+    else:
+        os.remove(config)
+        shutil.move(abs_path, config)
+        subprocess.call(['/bin/chown','root:cb', config])
+        subprocess.call(['/bin/chmod','644' ,config])
+
+
+def update_cb_conf(config):
+    for k,v in config.items():
+        change_config_setting(k, v, '/etc/cb/cb.conf')
+
+def get_apitoken(cb_server_url, username, password, ssl_verify=True):
+    if cb_server_url.endswith('/'):
+        aurl = cb_server_url + 'api/auth'
+    else:
+        aurl = cb_server_url + '/api/auth'
+
+    # get the api token
+    r = requests.get(aurl, auth=requests.auth.HTTPDigestAuth(username, password), verify=ssl_verify)
+    r.raise_for_status()
+    return r.json()['auth_token']
+
+
+
+def build_cli_parser():
+    parser = optparse.OptionParser(usage="%prog [options]", description="Configure Server based on configuration file and enable all Cb Threat Intelligence feeds")
+
+    # for each supported output type, add an option
+    #
+    parser.add_option("-c", "--cburl", action="store", default=None, dest="server_url",
+                      help="CB server's URL.  e.g., http://127.0.0.1 ")
+    parser.add_option("-a", "--apitoken", action="store", default=None, dest="token",
+                      help="API Token for Carbon Black server")
+    parser.add_option("-n", "--no-ssl-verify", action="store_false", default=True, dest="ssl_verify",
+                      help="Do not verify server SSL certificate.")
+    parser.add_option("-f", "--file", action="store", default=True, dest="buildfile",
+                      help="Configuration.ini file that contains the configuration to be applied")   
+    parser.add_option("-r", "--restart", action="store_true", default=False, dest="servicerestart",
+                      help="Restart Cb-Enterpise Services upon completion of script.  If applying any cb.conf changes a Carbon Black Service restart will be required")                        
+    parser.add_option("--cbinit", action="store_true", default=False, dest="cbinit",
+                      help="Execute the command /usr/share/cb/cbinit with the options from the configuration file")    
+
+    return parser
+    
+def main(argv):
+    parser = build_cli_parser()
+    opts, args = parser.parse_args(argv)
+    if not opts.buildfile:
+        print "Missing required param; run with --help for usage"
+        sys.exit(-1)
+    if opts.cbinit:
+        if os.path.isfile('/etc/cb/server.token'):
+            os.remove('/etc/cb/server.token')
+        print "Re-Initializing Carbon Black"
+        subprocess.call(['/usr/share/cb/cbinit', opts.buildfile])  
+    if not opts.server_url or not opts.token:
+        cbconfig = load(opts.buildfile,section='Config')
+        api_token = get_apitoken(cbconfig['default_sensor_server_url'], cbconfig['admin_username'], cbconfig['admin_password'], ssl_verify=opts.ssl_verify)
+        api_server = cbconfig['default_sensor_server_url']
+    else:
+        api_token = opts.token
+        api_server = opts.server_url
+    feedconfig = load(opts.buildfile,section='Feed')
+    enable_feed_action(api_server, api_token, feedconfig , opts.ssl_verify)
+    sharingconfig = load(opts.buildfile,section='Sharing')
+    enable_data_sharing(api_server, api_token, sharingconfig, opts.ssl_verify )
+    groupconfig = load(opts.buildfile,section='Group')
+    configure_groups(api_server, api_token, groupconfig, opts.ssl_verify )
+    if os.path.isfile('/etc/cb/cb.conf'):
+        cb_conf_config = load(opts.buildfile,section='cb.conf')
+        update_cb_conf(cb_conf_config )
+        if opts.servicerestart:
+            print "Restarting Carbon Black Services"
+            subprocess.call(['/etc/init.d/cb-enterprise', 'restart'])
+         
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
