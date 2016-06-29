@@ -4,11 +4,11 @@
 
 Carbon Black Enterprise Response Server Configuration Script is a standalone script designed to
 initialize and configure a Cb Response Server to a configuration ini file specifications.  This gives Incident Response
- and Managed Security Service Providers the ability to ensure their Cb Response Server are configured the same way every time.  
- The script can be ran at initialization time to configure from fresh install or on an existing installation to re-initialization 
- configuration.  Besides the ability to (re)initialize a given Cb Response server you can run with script utilizing only API endpoints 
+ and Managed Security Service Providers the ability to ensure their Cb Response Server is configured the same way every time.  
+ The script can be ran at initialization time to configure a fresh install or on an existing installation to re-initialization 
+ configuration.  Besides the ability to (re)initialize a given Cb Response server you can run the script utilizing only API endpoints 
  and configure the running server to meet your needs.  In that it will enable all feeds,  optionally configure feed notifications,
- and group settings for tamper and banning all based on the settings identified withinthe associated configuration file.  
+ and group settings for tamper and banning all based on the settings identified within the associated configuration file.  
  The script can even be ran multiple times only changing configuration if it does not meet the specification as long as the --cbinit option is not used.
 
 The configuration file utilizes standard INI based [format](https://en.wikipedia.org/wiki/INI_file).  In that it has a Section heading then the associated key name and value specification.
