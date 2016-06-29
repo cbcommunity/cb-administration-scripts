@@ -15,7 +15,9 @@ The configuration file utilizes standard INI based [format](https://en.wikipedia
 
 
 ### Command line options
-```python ConfigServer.py -h
+
+```
+python ConfigServer.py -h
 Usage: ConfigServer.py [options]
 
 Configure Server based on configuration file and enable all Cb Threat
@@ -33,6 +35,7 @@ Options:
   -r, --restart         Restart Cb-Enterpise Services upon completion of script.  If applying any cb.conf changes a Carbon Black Service restart will be required
   --cbinit              Execute the command /usr/share/cb/cbinit with the options from the configuration file
 ```
+
 ## Support
 
 The script is supported via our [User eXchange (Jive)](https://community.carbonblack.com/groups/developer-relations) 
@@ -73,6 +76,7 @@ default_sensor_server_url=http://127.0.0.1
 
 Carbon Black Enterprise Response Server Configuration Script gives you the ability to customize multiple areas
 of the UI/API to your specific configuration.  Below is an example from the example ini
+
 ```
 [Feed]
 # Only the two following global notifications options are available: 
@@ -111,6 +115,7 @@ tamper=1
 ## Cb Response Post Initialization cb.conf Customizations
 
 Cb Response gives you the ability to customize the installation via `/etc/cb/cb.conf` this script gives you the ability to set all of those value in the ini and ensure they match in cb.conf.  This portion of the script will only execute if the script is ran locally on the Cb Response server.  Below is an example from the example ini
+
 ```
 [cb.conf]
 # Enable/Disable cblr functionality.  Disabled by default
@@ -125,7 +130,6 @@ The purpose of this document is to outline how to build a Carbon Black Server ut
 ### Installation
 
 #### Fresh Install Steps (On Premise Cb Response)
-
 
 - Upload your specific Cb rpm file (license), ConfigServer.py, and configuration.ini files to the Cb server.
 - If this is a clone of an existing server with cb-enterprise installed
@@ -147,6 +151,7 @@ the default_sensor_server_url should be the IP of the server or the DNS address`
 - Now all of your feeds, tamper/banning settings on the default group, and CbLR are now configured
 
 #### Pre-Existing CbER Server (Cb Enterprise Response Cloud)
+
 The following steps are available if you would like to ensure the existing server is configured to match configuration.ini file.
 - Login into WebUI and pull the API token for the admin created on the install
     - Navigate to <username> in the upper right corner > Profile Info > API Token
