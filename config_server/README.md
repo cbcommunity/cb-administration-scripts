@@ -53,7 +53,7 @@ you will see the below options for customization
 # this is the /usr/share/cb/cbinit area
 # you will want to fill in default_sensor_server_url & admin_password
 # at a minimum 
-# only used if you are following the Fresh Install Steps (Non-CbER Cloud)
+# only used if you are following the Fresh Install Steps (Non-Cb Response Cloud)
 root_storage_path=/var/cb/data
 admin_username=cbadmin
 admin_first_name=Cb
@@ -119,7 +119,7 @@ Cb Response gives you the ability to customize the installation via `/etc/cb/cb.
 ```
 [cb.conf]
 # Enable/Disable cblr functionality.  Disabled by default
-# only configured if you are local to the CbER Server
+# only configured if you are local to the Cb Response Server
 CbLREnabled=True
 ```
 
@@ -150,7 +150,7 @@ the default_sensor_server_url should be the IP of the server or the DNS address`
 - Verify that the Web server is accessible at the `default_sensor_server_url` configured in above step by logging into WebUI
 - Now all of your feeds, tamper/banning settings on the default group, and CbLR are now configured
 
-#### Pre-Existing CbER Server (Cb Enterprise Response Cloud)
+#### Pre-Existing Cb Response Server (Cb Enterprise Response Cloud)
 
 The following steps are available if you would like to ensure the existing server is configured to match configuration.ini file.
 - Login into WebUI and pull the API token for the admin created on the install
