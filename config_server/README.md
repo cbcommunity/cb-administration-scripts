@@ -48,6 +48,8 @@ Cb Response has the built in ability to automate the installation of a server.  
 documented on our [User eXchange.](https://community.carbonblack.com/docs/DOC-2245) In the provided exampled configuration.ini file
 you will see the below options for customization
 
+**Please ensure you secure this files after use since the admin username and password is placed in this file**
+
 ```
 [Config]
 # this is the /usr/share/cb/cbinit area
@@ -143,8 +145,8 @@ The purpose of this document is to outline how to build a Carbon Black Server ut
     - Install cb-enterprise on the Master
         - `yum install cb-enterprise`
     - Configure the “configuration.ini” file for your options
-        - Required items to change: `default_sensor_server_url, admin_password, with recommended items of admin_email
-the default_sensor_server_url should be the IP of the server or the DNS address`
+        - Required items to change: `default_sensor_server_url`, `admin_password`, with recommended items of `admin_email`
+the `default_sensor_server_url` should be the IP of the server or the DNS address
 - Initialize the Cb server using the configuration file:
     - `python ConfigServer.py -f configuration.ini -r --cbinit`
 - Verify that the Web server is accessible at the `default_sensor_server_url` configured in above step by logging into WebUI
