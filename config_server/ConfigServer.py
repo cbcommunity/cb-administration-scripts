@@ -23,7 +23,7 @@
 # SOFTWARE.
 #
 # -----------------------------------------------------------------------------
-# Carbon Black Enterprise Response Server Configuration Script is a standalone script designed to
+# Cb Response Server Configuration Script is a standalone script designed to
 # initialize and configure a Cb Response Server to a configuration ini file specifications.  This gives Incident Response
 # and Managed Security Service Providers the ability to ensure their Cb Response Server is configured the same way every time.  
 # The script can be ran at initialization time to configure a fresh install or on an existing installation to re-initialization 
@@ -188,13 +188,13 @@ def build_cli_parser():
     parser.add_option("-c", "--cburl", action="store", default=None, dest="server_url",
                       help="CB server's URL.  e.g., http://127.0.0.1 ")
     parser.add_option("-a", "--apitoken", action="store", default=None, dest="token",
-                      help="API Token for Carbon Black server")
+                      help="API Token for Cb Response server")
     parser.add_option("-n", "--no-ssl-verify", action="store_false", default=True, dest="ssl_verify",
                       help="Do not verify server SSL certificate.")
     parser.add_option("-f", "--file", action="store", default=True, dest="buildfile",
                       help="Configuration.ini file that contains the configuration to be applied")   
     parser.add_option("-r", "--restart", action="store_true", default=False, dest="servicerestart",
-                      help="Restart Cb-Enterpise Services upon completion of script.  If applying any cb.conf changes a Carbon Black Service restart will be required")                        
+                      help="Restart Cb-Enterpise Services upon completion of script.  If applying any cb.conf changes a Cb Response Service restart will be required")                        
     parser.add_option("--cbinit", action="store_true", default=False, dest="cbinit",
                       help="Execute the command /usr/share/cb/cbinit with the options from the configuration file")    
 
@@ -209,7 +209,7 @@ def main(argv):
     if opts.cbinit:
         if os.path.isfile('/etc/cb/server.token'):
             os.remove('/etc/cb/server.token')
-        print "Re-Initializing Carbon Black"
+        print "Re-Initializing Cb Response"
         subprocess.call(['/usr/share/cb/cbinit', opts.buildfile])  
     if not opts.server_url or not opts.token:
         cbconfig = load(opts.buildfile,section='Config')
@@ -228,7 +228,7 @@ def main(argv):
         cb_conf_config = load(opts.buildfile,section='cb.conf')
         update_cb_conf(cb_conf_config )
         if opts.servicerestart:
-            print "Restarting Carbon Black Services"
+            print "Restarting Cb Response Services"
             subprocess.call(['/etc/init.d/cb-enterprise', 'restart'])
          
 

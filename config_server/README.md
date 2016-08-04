@@ -1,8 +1,8 @@
-# Carbon Black Enterprise Response Server Configuration Script
+# Cb Response Server Configuration Script
 
 ## Overview
 
-Carbon Black Enterprise Response Server Configuration Script is a standalone script designed to
+Cb Response Server Configuration Script is a standalone script designed to
 initialize and configure a Cb Response Server to a configuration ini file specifications.  This gives Incident Response
  and Managed Security Service Providers the ability to ensure their Cb Response Server is configured the same way every time.  
  The script can be ran at initialization time to configure a fresh install or on an existing installation to re-initialization 
@@ -28,11 +28,11 @@ Options:
   -c SERVER_URL, --cburl=SERVER_URL
                         CB server's URL.  e.g., http://127.0.0.1
   -a TOKEN, --apitoken=TOKEN
-                        API Token for Carbon Black server
+                        API Token for Cb Response server
   -n, --no-ssl-verify   Do not verify server SSL certificate.
   -f BUILDFILE, --file=BUILDFILE
                         Configuration.ini file that contains the configuration to be applied
-  -r, --restart         Restart Cb-Enterpise Services upon completion of script.  If applying any cb.conf changes a Carbon Black Service restart will be required
+  -r, --restart         Restart Cb-Enterpise Services upon completion of script.  If applying any cb.conf changes a Cb Response Service restart will be required
   --cbinit              Execute the command /usr/share/cb/cbinit with the options from the configuration file
 ```
 
@@ -76,7 +76,7 @@ default_sensor_server_url=http://127.0.0.1
     
 ## Cb Response Post Initialization UI Customization
 
-Carbon Black Enterprise Response Server Configuration Script gives you the ability to customize multiple areas
+Cb Response Server Configuration Script gives you the ability to customize multiple areas
 of the UI/API to your specific configuration.  Below is an example from the example ini
 
 ```
@@ -102,7 +102,7 @@ CbKnownIOCs=1,3
 CbCommunity=1,3
 sans=1,3
 [Sharing]
-# By default we do not enable Carbon Black Event
+# By default we do not enable Cb Response Event
 # data to be uploaded to Carbon Black
 # Enabled (1) and Disabled (0)
 ticevent=1
