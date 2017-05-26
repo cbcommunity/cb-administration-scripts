@@ -1,6 +1,8 @@
 # WIP
 # Backup and Restore Scripts
 
+## NOTE that these scripts have only been tested with Cb Response 5.x. We do not have any word on support for 6.x at this time.
+
 ## Backup
 
 The script is meant to run on a standalone box.
