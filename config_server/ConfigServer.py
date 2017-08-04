@@ -50,8 +50,7 @@ import urlparse
 import tempfile
 import shutil
 import json
-import urllib3
-urllib3.disable_warnings()
+
 try:
     from requests.packages.urllib3.exceptions import InsecureRequestWarning
     requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
