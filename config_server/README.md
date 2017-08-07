@@ -31,9 +31,15 @@ Options:
                         API Token for Carbon Black server
   -n, --no-ssl-verify   Do not verify server SSL certificate.
   -f BUILDFILE, --file=BUILDFILE
-                        Configuration.ini file that contains the configuration to be applied
-  -r, --restart         Restart Cb-Enterpise Services upon completion of script.  If applying any cb.conf changes a Carbon Black Service restart will be required
-  --cbinit              Execute the command /usr/share/cb/cbinit with the options from the configuration file
+                        Configuration.ini file that contains the configuration
+                        to be applied
+  -r, --restart         Restart Cb-Enterpise Services upon completion of
+                        script.  If applying any cb.conf changes a Carbon
+                        Black Service restart will be required
+  --cbinit              Execute the command /usr/share/cb/cbinit with the
+                        options from the configuration file
+  -t, --test            Do NOT apply any configuration changes only test and
+                        report
 ```
 
 ## Support
@@ -161,3 +167,7 @@ copy to clipboard the API token
 - To configure the Server with your options you will want to run the ConfigServer.py script
     - `python ConfigServer.py -c https://CbResponseURL  -a <apiToken> -n -f configuration.ini`
 - Now all of your feeds, tamper/banning settings on the default group are now configured.
+
+If you would like to only report how the Cb Response Server is different from your configuration as well as report all watchlist Alerting (3)
+- You will want to run the ConfigServer.py script
+    - `python ConfigServer.py -c https://CbResponseURL  -a <apiToken> -n -f configuration.ini -t`
