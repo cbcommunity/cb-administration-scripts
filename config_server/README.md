@@ -43,9 +43,7 @@ Options:
 ```
 
 ## Support
-
-The script is supported via our [User eXchange (Jive)](https://community.carbonblack.com/groups/developer-relations) 
-and via email to dev-support@carbonblack.com.  
+This repository is under community support. We do review pull requests for this repository, but we do not provide any first-party support. Please contact dev-support@carbonblack.com if you have any questions about contributing to this repository.
 
 
 ## Cb Response Initialization 
